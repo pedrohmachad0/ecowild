@@ -5,3 +5,5 @@ ADR-003: Câmera terceira pessoa padrão, primeira pessoa opcional.
 ADR-004: Animais reais biologicamente coerentes; fantasia explicitamente marcada.
 ADR-005: Arquivos agents/ são instruções para IAs, não automações executadas.
 ADR-006: Escopo incremental, PR e revisão antes de integrar na main.
+ADR-007: A cena é orquestrada por main.ts, enquanto mundo, jogador, câmera e input vivem em módulos independentes; configurações e regras puras não dependem de Babylon ou DOM.
+ADR-008: A experiência mobile prioriza landscape; joystick, câmera por arrasto e ações usam regiões e ponteiros independentes, com prompt portrait e bloqueio de gestos do navegador sem remover os controles desktop.

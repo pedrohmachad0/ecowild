@@ -1,1 +1,42 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>EcoWild</title></head><body><canvas id="game"></canvas><div id="hud"><strong>EcoWild · Mata da Nascente</strong><button id="camera">Alternar câmera</button></div><div id="touch"><div id="pad"></div><button id="jump">Pular</button></div><script type="module" src="/src/main.ts"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"
+    />
+    <meta name="theme-color" content="#122b20" />
+    <title>EcoWild</title>
+  </head>
+  <body>
+    <canvas id="game" aria-label="Mundo 3D do EcoWild"></canvas>
+
+    <div id="hud" aria-label="Informações do jogo">
+      <strong>EcoWild · Mata da Nascente</strong>
+      <button id="camera" type="button">Alternar câmera</button>
+    </div>
+
+    <div id="touch-controls" aria-label="Controles touch">
+      <div id="camera-look" aria-label="Arraste para controlar a câmera"></div>
+      <div id="pad" role="application" aria-label="Joystick de movimento">
+        <span id="pad-knob" aria-hidden="true"></span>
+      </div>
+      <div id="actions" aria-label="Ações">
+        <button id="jump" class="action-button action-jump" type="button">Pular</button>
+        <button id="interact" class="action-button" type="button">Interagir</button>
+        <button id="camera-touch" class="action-button" type="button">Câmera</button>
+      </div>
+    </div>
+
+    <div id="orientation-prompt" role="dialog" aria-live="polite" aria-labelledby="orientation-title">
+      <div class="orientation-card">
+        <strong id="orientation-title">Gire o celular</strong>
+        <p id="orientation-status">O EcoWild funciona melhor na orientação horizontal.</p>
+        <button id="rotate-screen" type="button">Tentar orientação horizontal</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
