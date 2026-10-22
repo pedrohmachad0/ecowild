@@ -1,0 +1,1 @@
+import {describe,it,expect} from 'vitest';import {species} from '../src/data/species';describe('species',()=>{it('IDs únicos',()=>expect(new Set(species.map(s=>s.id)).size).toBe(species.length));it('fantasia identificada',()=>expect(species.find(s=>s.id==='lumifox')?.fictional).toBe(true));it('pet inicial disponível',()=>expect(species.some(s=>s.tameable)).toBe(true))});
