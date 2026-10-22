@@ -68,3 +68,26 @@ Pequena floresta navegável com lago, caminhos, rochas, árvores, arbustos, limi
 
 ## Aceite e exclusões
 Concluído somente com controles reais, câmeras funcionais, colisões adequadas, cinco criaturas visíveis e comportamentais, domesticação jogável, comandos, catálogo persistente, recuperação de save, PWA testado conforme suporte da plataforma e sem erros críticos conhecidos. Alvos de desempenho: ~30 FPS em celulares intermediários compatíveis e ~60 FPS em PCs adequados **medidos**, não garantidos. Fora do MVP: multiplayer, mundo planetário, centenas de espécies, genética complexa, montarias e construção avançada.
+
+## Visão fundadora — preservar em todas as expansões
+Esta seção registra a **ideia inicial do criador**, anterior ao recorte técnico do MVP, e deve orientar o design de longo prazo. EcoWild é um jogo sobre **biologia, geografia, biomas e relevos**, povoado por **animais reais e monstros/criaturas fantásticas**. O jogador explora ambientes e descobre espécies por meio de um **sistema de catálogo e colecionáveis**, podendo criar vínculos com determinados animais exóticos e criaturas para torná-los **pets**.
+
+### Classificação multidimensional obrigatória
+- **Locomoção/habitat:** aquáticos, voadores, subterrâneos e terrestres comuns. Uma criatura pode ocupar mais de uma categoria (ex.: semiaquático).
+- **Grupos biológicos:** mamíferos, anfíbios, répteis, peixes e aves, extensíveis a invertebrados. Monstros/criaturas fantásticas têm classificação própria, sem atribuir-lhes taxonomia científica fictícia como fato.
+- **Geografia:** cada espécie se relaciona com biomas, relevo, água, clima e habitat; não distribuir criaturas aleatoriamente sem justificativa ecológica ou fantástica.
+
+### Ciclo central de jogo desejado
+**Explorar biomas e relevos → descobrir animais e monstros → registrar no catálogo/coletar descobertas → compreender hábitos e riscos → conquistar pets elegíveis → usar companheiros para proteção e para ajudar a domar outros → obter determinados pets por ovos → explorar novas regiões.**
+
+### Mecânicas fundadoras inegociáveis para a visão completa
+1. **Fauna selvagem perigosa:** algumas criaturas selvagens podem atacar o jogador conforme ameaça, território e comportamento; outras fogem ou ignoram. Evitar agressividade universal.
+2. **Proteção por pets:** companheiros respondem a ameaças e podem proteger o jogador; comandos, alcance, estados e prioridades reais, não apenas efeitos visuais.
+3. **Domesticação assistida por pets:** companheiros existentes ajudam a localizar, aproximar, acalmar, proteger ou facilitar vínculo com novas espécies, conforme habilidades e compatibilidade. Não deve ser um bônus automático sem ação jogável.
+4. **Pets exóticos domesticáveis:** apenas espécies elegíveis, com vínculo e progressão; nem todo animal ou monstro pode ser pet.
+5. **Ovos como forma de obter alguns pets:** obtenção, inventário, incubação e nascimento com regras por espécie; animais reais seguem reprodução biologicamente correta e monstros podem ter regras próprias. Não transformar todas as espécies em ovíparas.
+6. **Catálogo e colecionáveis:** espécies, habitats, comportamentos, raridades e descobertas persistentes; colecionar informações e criaturas não deve exigir combate.
+7. **Geografia e ecossistemas como mecânicas:** biomas e relevos influenciam distribuição, locomoção, recursos, riscos e oportunidades de descoberta.
+
+### Preservação e implementação incremental
+Esta visão **não significa que todos os sistemas já existam**. O MVP da Mata da Nascente é um recorte para validar as fundações. Cada etapa deve preparar interfaces e dados que permitam proteção, domesticação assistida e ovos no futuro, sem fingir que estão prontos. Mudanças que eliminem algum pilar fundador exigem aprovação explícita do criador e registro em DECISIONS.md. PWA landscape-first é um requisito adicional de plataforma, não substitui a identidade original.
