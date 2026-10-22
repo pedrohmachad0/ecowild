@@ -27,3 +27,6 @@ EcoWild é um jogo 3D estilizado real, modular e executável de exploração, ec
 8. Não remova recursos existentes sem justificativa e aprovação; não faça merge automático; prefira branches isoladas e PRs revisáveis.
 9. Atualize apenas checkboxes verificadamente concluídos. Documente riscos, limitações e decisões de arquitetura.
 10. Antes de expandir biomas ou espécies, assegure o vertical slice da Mata da Nascente com exploração, fauna, vínculo, catálogo, save/load e experiência mobile utilizável.
+
+## Regra de preservação da ideia fundadora
+Antes de planejar features, leia a seção **“Visão fundadora”** em `docs/PROJECT_SPEC.md` e a matriz de rastreabilidade em `docs/ROADMAP.md`. EcoWild nasceu da combinação de biologia + geografia + biomas/relevos + animais/monstros classificados por habitat e taxonomia + catálogo/colecionáveis + pets exóticos + selvagens que atacam + pets que protegem + domesticação de novos pets auxiliada por companheiros + ovos para alguns pets. **Não reduzir o jogo a um simulador de caminhada, nem excluir silenciosamente esses sistemas por estarem fora do MVP.** Tratar cada requisito como planejado, implementado ou validado; nunca confundir as três condições. PWA mobile landscape é requisito complementar.
