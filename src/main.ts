@@ -7,6 +7,7 @@ import {
 } from '@babylonjs/core';
 import { CameraRig } from './camera/CameraRig';
 import { Input } from './controls/Input';
+import { requestLandscapeOrientation } from './controls/orientation';
 import { createPlayer, updatePlayer } from './player/Player';
 import { createMataDaNascente } from './world/MataDaNascente';
 import './style.css';
@@ -28,12 +29,23 @@ const input = new Input();
 
 const toggleCamera = () => camera.toggle(canvas);
 document.querySelector('#camera')?.addEventListener('click', toggleCamera);
+document.querySelector('#camera-touch')?.addEventListener('click', toggleCamera);
 window.addEventListener('keydown', (event) => {
   if (event.code === 'KeyV' && !event.repeat) toggleCamera();
 });
 
+document.querySelector('#rotate-screen')?.addEventListener('click', async () => {
+  const status = document.querySelector<HTMLElement>('#orientation-status');
+  const locked = await requestLandscapeOrientation();
+  if (status) status.textContent = locked
+    ? 'Orientação horizontal solicitada.'
+    : 'Gire o celular manualmente para continuar.';
+});
+
 engine.runRenderLoop(() => {
   const deltaSeconds = Math.min(engine.getDeltaTime() / 1000, 0.05);
+  const look = input.consumeLookDelta();
+  camera.applyLook(look.x, look.y);
   updatePlayer(player, input, camera, world.bounds, deltaSeconds);
   camera.update(player.mesh.position);
   scene.render();

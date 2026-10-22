@@ -38,6 +38,24 @@ export class CameraRig {
     return this.isFirstPerson ? this.firstPerson.rotation.y : -this.thirdPerson.alpha - Math.PI / 2;
   }
 
+  applyLook(deltaX: number, deltaY: number) {
+    const sensitivity = 0.008;
+    if (this.isFirstPerson) {
+      this.firstPerson.rotation.y += deltaX * sensitivity;
+      this.firstPerson.rotation.x = Math.max(
+        -1.4,
+        Math.min(1.4, this.firstPerson.rotation.x + deltaY * sensitivity),
+      );
+      return;
+    }
+
+    this.thirdPerson.alpha -= deltaX * sensitivity;
+    this.thirdPerson.beta = Math.max(
+      0.35,
+      Math.min(1.45, this.thirdPerson.beta + deltaY * sensitivity),
+    );
+  }
+
   toggle(canvas: HTMLCanvasElement) {
     this.scene.activeCamera?.detachControl();
     this.mode = this.isFirstPerson ? 'third-person' : 'first-person';
