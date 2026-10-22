@@ -32,3 +32,17 @@ PWA é requisito de lançamento do vertical slice, não opcional; planejar desde
 
 ## Situação de branches (não confundir com main)
 Esta branch `chatgpt` documenta a fundação original. Relatórios externos indicam trabalho adicional na branch `manus` (mundo modular e mobile landscape), **não integrado automaticamente** aqui; verificar GitHub e código antes de atualizar checkboxes. O CI inicial da fundação passou anteriormente, mas alterações futuras exigem novas execuções. Nenhuma implementação de PWA deve ser presumida apenas porque está especificada.
+
+## Rastreabilidade dos pilares da ideia original
+| Pilar fundador | Primeiro marco verificável | Expansão posterior |
+|---|---|---|
+| Biologia, geografia, biomas e relevos | M3: cenário e habitats coerentes | Novas regiões, climas, altitude e ecologia |
+| Animais e monstros aquáticos, voadores, subterrâneos e terrestres | M4: classificações tipadas e cinco espécies | Locomoção especializada e novos habitats |
+| Mamíferos, anfíbios, répteis, peixes e aves | M4: taxonomia extensível | Representantes jogáveis de cada grupo |
+| Catálogo e colecionáveis | M6: descoberta e registro persistente | Pesquisa, raridades e coleções avançadas |
+| Pets exóticos domesticáveis | M5: Lumirraposa e vínculo | Diversidade de espécies elegíveis |
+| Selvagens atacam e pets protegem | M5: ameaça, defesa e proteção simples | Combate contextual e táticas |
+| Domar novos pets com ajuda dos atuais | M5: contrato e primeiro efeito jogável, se couber | Habilidades específicas de domesticação assistida |
+| Ovos para obter alguns pets | M9: modelo e fluxo de obtenção/incubação | Crescimento e herança |
+
+**Regra de aceite:** não marcar um pilar como concluído apenas porque existe documentação ou interface. Para ovos e grupos de fauna não incluídos no MVP, manter como **planejado**, sem antecipar implementação. Preservar esta matriz quando reorganizar os marcos.
