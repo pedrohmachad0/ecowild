@@ -6,34 +6,48 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"
     />
-    <meta name="theme-color" content="#122b20" />
+    <meta name="theme-color" content="#10241c" />
     <title>EcoWild</title>
   </head>
   <body>
-    <canvas id="game" aria-label="Mundo 3D do EcoWild"></canvas>
+    <canvas id="game" aria-label="Mata da Nascente"></canvas>
 
-    <div id="hud" aria-label="Informações do jogo">
-      <strong>EcoWild · Mata da Nascente</strong>
-      <button id="camera" type="button">Alternar câmera</button>
+    <section id="title">
+      <p class="eyebrow">Diário de campo · 01</p>
+      <h1>EcoWild</h1>
+      <p>Mata da Nascente</p>
+      <p>Uma floresta pequena e viva. Observe antes de se aproximar. A Auryn não se domestica só com comida.</p>
+      <button id="enter" type="button">Entrar na mata</button>
+      <button id="resume" type="button" hidden>Continuar de onde parei</button>
+    </section>
+
+    <div id="playing-bar" hidden>
+      <div id="vitals" aria-label="Estado"></div>
+      <div id="menu">
+        <button id="open-catalog" type="button">Diário</button>
+        <button id="open-inventory" type="button">Bolsa</button>
+        <button id="open-map" type="button">Mapa</button>
+        <button id="open-pause" type="button">Pausa</button>
+        <button id="camera" type="button">Câmera</button>
+      </div>
     </div>
+    <p id="prompt" hidden></p>
+    <div id="toasts"></div>
+    <section id="sheet" hidden>
+      <button id="close-sheet" type="button">Fechar</button>
+      <div data-body></div>
+    </section>
 
     <div id="touch-controls" aria-label="Controles touch">
-      <div id="camera-look" aria-label="Arraste para controlar a câmera"></div>
-      <div id="pad" role="application" aria-label="Joystick de movimento">
+      <div id="camera-look" aria-label="Arraste para olhar"></div>
+      <div id="pad" role="application" aria-label="Joystick">
         <span id="pad-knob" aria-hidden="true"></span>
       </div>
-      <div id="actions" aria-label="Ações">
+      <div id="actions">
         <button id="jump" class="action-button action-jump" type="button">Pular</button>
+        <button id="sprint" class="action-button" type="button">Correr</button>
         <button id="interact" class="action-button" type="button">Interagir</button>
         <button id="camera-touch" class="action-button" type="button">Câmera</button>
-      </div>
-    </div>
-
-    <div id="orientation-prompt" role="dialog" aria-live="polite" aria-labelledby="orientation-title">
-      <div class="orientation-card">
-        <strong id="orientation-title">Gire o celular</strong>
-        <p id="orientation-status">O EcoWild funciona melhor na orientação horizontal.</p>
-        <button id="rotate-screen" type="button">Tentar orientação horizontal</button>
       </div>
     </div>
 

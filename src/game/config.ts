@@ -1,0 +1,26 @@
+/** Central tunables. Gameplay code reads these instead of scattering magic numbers. */
+export const CONFIG = {
+  fixedDt: 1 / 60,
+  maxFrame: 0.05,
+  walk: 4.7,
+  sprint: 7.6,
+  gravity: -18,
+  jump: 6.8,
+  coyote: 0.12,
+  jumpBuffer: 0.12,
+  playerRadius: 0.38,
+  worldRadius: 34,
+  waterY: -0.35,
+  lakeX: 8,
+  lakeZ: 2,
+  lookDefault: 0.0045,
+  camera: {
+    distance: 6.4,
+    min: 2.4,
+    max: 11,
+    pitch: 0.46,
+    eye: 1.45,
+  },
+  aiHz: 8,
+  saveEvery: 8,
+} as const;
