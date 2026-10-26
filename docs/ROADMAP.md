@@ -1,16 +1,16 @@
 # Roadmap e rastreabilidade
 
-Verificação em 26/10/2026 sobre `main@2db4f8e` e branch `fix/mata-integrity-mobile-pwa`. O PR #2 está mesclado; `chatgpt`/PR #3 permanece preservado, sem merge. Seus requisitos de visão/PWA foram reconciliados manualmente com o runtime atual.
+Continuação em 26/10/2026 sobre `main@d6daa63`, após o merge do PR #4, na branch `feat/progress-recovery-touch-zoom`. Os PRs #2 e #4 estão mesclados; `chatgpt`/PR #3 permanece preservado, sem merge. Seus requisitos de visão/PWA foram reconciliados manualmente com o runtime atual.
 
 | Marco | Implementado | Validação / restante |
 |---|---|---|
-| M1 Fundação | Vite, TypeScript, Babylon, CI | Scripts locais passam; CI remoto depende do PR |
-| M2 Controles | Teclado/mouse, ações, toque independente, câmera 1ª/3ª pessoa, pausa | Chromium desktop/toque; gamepad padrão básico sem teste físico; zoom touch futuro |
+| M1 Fundação | Vite, TypeScript, Babylon, CI | Scripts locais e CI do PR #4 passaram; validação da continuação registrada em TESTING |
+| M2 Controles | Teclado/mouse, ações, toque independente, câmera 1ª/3ª pessoa, pausa | Chromium desktop/toque; gamepad padrão básico sem teste físico; zoom por pinça implementado |
 | M3 Mata | Relevo, lago, trilha, árvores/rochas, frutos, colisões circulares, limite visível | Navegação do MVP; câmera/colisão geométrica completa ainda parcial |
 | M4 Fauna | 11 atores, cinco perfis, estados diferenciados, seed, decisão a ~8 Hz | Sem cone/linha de visão, memória ou LOD distante; caça abstrata |
 | M5 Vínculo | Auryn, confiança, observação, oferta validada, FOLLOW/STAY/PROTECT/RETURN, recuperação | Regressões e percurso em navegador; proteção contextual simples |
 | M6 Diário/bolsa | Campos graduais, pesquisa, coleta/consumo e guia textual | Sem filtros, fotografias, rastros ou minimapa gráfico |
-| M7 Progresso | Save v1 validado, fila, backup no novo jogo, falhas visíveis, preferências separadas | Tela de restauração de backup e arbitragem entre abas pendentes |
+| M7 Progresso | Save v1 validado, fila, backup no novo jogo, falhas visíveis, preferências separadas | Restauração atômica, exportação e conflito entre abas implementados; importação de arquivos futura |
 | M8 PWA/mobile | Manifest/ícones, shell offline, atualização consentida, base relativa | Chromium emulado; instalação/standalone e desempenho físico pendentes |
 | M9 Expansão | Visão documentada | Não implementado |
 
@@ -47,8 +47,10 @@ M4/M5 já têm implementações no PR #4. Esses gates orientam aceitação e exp
 
 - [ ] Isolar percepção/navegação de `game/sim/simulation.ts`, cachear consultas por tick e introduzir LOD apenas após profiling.
 - [ ] Resolver rotas em torno do lago e obstáculos côncavos; reduzir reposicionamentos de presa/pet e melhorar leitura das transições.
-- [ ] Aperfeiçoar câmera contra copas/rochas por geometria, zoom touch e fontes de feedback de ameaça.
-- [ ] UI para recuperar/exportar backup e arbitragem de gravações entre abas.
+- [ ] Aperfeiçoar câmera contra copas/rochas por geometria e fontes de feedback de ameaça.
+- [x] UI para recuperar/exportar backup e arbitragem de gravações entre abas desta versão.
+- [x] Zoom por pinça independente do joystick, retomada de arrasto e limpeza dos ponteiros.
+- [ ] Importação JSON com prévia/validação e confirmação, sem descartar slots existentes.
 - [ ] Reduzir bundle Babylon com importações seletivas verificadas, sem retirar funcionalidades; medir download e primeiro frame em rede móvel.
 - [ ] Mais pontos de observação, filtros do diário, marcos e navegação visual. Line of sight antes de alegar observação visual rigorosa.
 - [ ] Migrar/remover módulos de render antigos somente depois de mapear consumidores externos e preservar testes úteis.

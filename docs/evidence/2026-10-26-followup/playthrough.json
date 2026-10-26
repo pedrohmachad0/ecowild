@@ -1,0 +1,11 @@
+{
+  "path": "spawn → trail → glow-0 → observe actual wandering Auryn → offer → STAY/name → save/reload → diary",
+  "state_modified_by_test": false,
+  "pet": {
+    "name": "Luz",
+    "command": "STAY",
+    "level": 1,
+    "xp": 0.49999999999999994
+  },
+  "errors": []
+}
