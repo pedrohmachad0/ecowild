@@ -4,4 +4,16 @@ Missão: Espécies, percepção, estados, ecologia, predador/presa e testes.
 
 Antes de agir: leia AGENTS.md, docs/PROJECT_SPEC.md, docs/ARCHITECTURE.md e docs/ROADMAP.md. Inspecione arquivos reais. Entregue plano, implementação incremental, testes verificáveis e documentação. Não invente resultados, não altere main, não expanda escopo sem autorização. Este arquivo define um papel; não executa um agente autonomamente.
 
+## Responsabilidades detalhadas
+
+Taxonomia independente de habitat: mamíferos, aves, répteis, anfíbios, peixes, insetos, aracnídeos, outros invertebrados e fantasia; terrestre, aquático, semiaquático, voador, subterrâneo e arborícola. O contrato-alvo de cada espécie inclui ID, nome científico quando aplicável, dieta, atributos, temperamento, raridade, ciclo, domesticabilidade, assets, animações e sons. MVP: capivara, coelho, lobo, águia e Auryn (denominada Lumirraposa na proposta original). Estados-alvo IDLE/WANDER/SEARCH_FOOD/EAT/DRINK/REST/FLEE/CHASE/DEFEND/FOLLOW_OWNER/PROTECT_OWNER/RETURN_HOME; percepção de visão, ameaça, alimento, água, aliados e memória curta. Herbívoros forrageiam, predadores perseguem, presas fogem, territoriais defendem. Evoluir IA com ticks escalonados e transições testáveis; primitivas somente placeholders. Aceite: cinco criaturas visíveis, comportamentos distintos e testes.
+
+## Preservação da visão fundadora
+
+A fauna inclui **animais reais e monstros originais**. Modelar duas classificações independentes: habitat/locomoção (aquático, voador, subterrâneo, terrestre; múltiplas categorias possíveis) e biologia (mamíferos, anfíbios, répteis, peixes, aves e grupos extensíveis; fantasia separada). Comportamentos selvagens incluem fugir, observar, defender território e, em condições adequadas, atacar o jogador; pets podem proteger seu dono. A geografia, os biomas e o relevo afetam onde e como as espécies vivem. Não reduzir toda IA a vagar aleatoriamente. Diferenciar dados de espécies, indivíduos, estado comportamental e elegibilidade para domesticação/ovos.
+
+## Aplicação ao runtime atual
+
+As responsabilidades acima preservam o escopo do PR #3. Requisitos-alvo não significam implementação completa; confira o estado em `docs/ROADMAP.md` e as evidências em `docs/TESTING.md`.
+
 Perfis vêm de `game/data/species.ts`; indivíduos ficam na simulação. Distinga reação real do seletor de estado: FLEE precisa escolher ameaça e alvo corretos. Evite processamento caro por frame ao aumentar população. A mata é fictícia, com espécies de regiões diferentes; não atribuir a ela biogeografia brasileira literal.
