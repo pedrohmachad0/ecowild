@@ -15,3 +15,11 @@
 13. Listeners touch devem ter ciclo de vida controlado, `touch-action` explícito e não bloquear os controles desktop.
 
 **Fluxo:** ler -> planejar -> implementar -> testar -> documentar -> revisar.
+
+## Runtime e evidências atuais
+
+- Entrada ativa: `src/main.ts` → `src/game/EcoWildGame.ts`. Leia `docs/ARCHITECTURE.md` antes de alterar módulos da fundação antiga; não iniciar uma segunda cena nem duplicar espécies.
+- `game/data/species.ts` é a fonte dos perfis. Auryn corresponde à antiga proposta Lumirraposa; o adaptador legado conserva `lumifox` apenas por compatibilidade.
+- Não aceitar versão desconhecida de save, tratar leitura falha como slot vazio nem substituir progresso sem confirmação na interface. Cache PWA nunca limpa IndexedDB.
+- Verifique o percurso completo e leia `docs/TESTING.md`: scripts de emulação são opcionais, suas dependências devem estar disponíveis. Não editar módulos durante roteiro Vite em andamento, pois HMR invalida a execução.
+- Preserve a visão fundadora de PROJECT_SPEC e sua matriz no ROADMAP. Sistemas futuros não viram botões decorativos. Decisões comuns de implementação seguem o escopo autorizado; conflitos com risco de perda de dados devem ser isolados e relatados.

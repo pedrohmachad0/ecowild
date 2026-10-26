@@ -1,0 +1,47 @@
+{
+  "production_probe_absent": true,
+  "installability": {
+    "installabilityErrors": []
+  },
+  "manifest": {
+    "id": "./",
+    "name": "EcoWild — Mata da Nascente",
+    "short_name": "EcoWild",
+    "description": "Explore a mata, descubra espécies e crie vínculo com a Auryn.",
+    "lang": "pt-BR",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "landscape",
+    "theme_color": "#122b20",
+    "background_color": "#122b20",
+    "icons": [
+      {
+        "src": "icons/icon-192.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "icons/icon-512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "icons/maskable-512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "maskable"
+      }
+    ]
+  },
+  "offline_start_and_pet_save": true,
+  "update_waiting_multitab_guard_and_save": true,
+  "updated_offline_no_stale_html": true,
+  "cache_versions": [
+    "ecowild-shell-/ecowild/-4cdc948e8f1ac71d",
+    "ecowild-shell-/ecowild/-00bda46c1a25ca6d"
+  ],
+  "page_errors": []
+}

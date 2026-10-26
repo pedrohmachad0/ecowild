@@ -1,0 +1,53 @@
+{
+  "cdp_multitouch": "joystick + camera + sprint; independent release + cancellation",
+  "viewports": [
+    "667x375",
+    "812x375",
+    "844x390",
+    "390x844 + dismissible orientation notice"
+  ],
+  "preferences_reload": true,
+  "quality_cycle_counts": {
+    "meshes": 154,
+    "materials": 40
+  },
+  "idb": {
+    "saved": [
+      true,
+      true
+    ],
+    "berries": 2,
+    "aborted": false,
+    "preserved": 2,
+    "unavailable": "unavailable",
+    "failed": false
+  },
+  "new_game_cancel_backup": true,
+  "paused_pet_commands_and_escaping": true,
+  "input": {
+    "first": true,
+    "held": false,
+    "again": true,
+    "menuTab": true,
+    "released": true,
+    "quickTap": true
+  },
+  "software_fps": {
+    "samples": [
+      13,
+      12,
+      12,
+      12,
+      13,
+      13,
+      14,
+      15,
+      15,
+      15
+    ],
+    "mean": 13.4,
+    "renderer": "Chromium headless SwiftShader; low; 844x390"
+  },
+  "webgl_context_restore": "paused, message cleared after restoration (SwiftShader)",
+  "console_errors": []
+}
