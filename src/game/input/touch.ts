@@ -1,9 +1,10 @@
 type TouchSink = {
   setStick(x: number, y: number): void;
   addLook(x: number, y: number): void;
+  addZoom(delta: number): void;
   setHold(name: "jump" | "sprint" | "interact" | "camera", down: boolean): void;
 };
-/** Each region owns one pointer. Losing one finger never releases another region. */
+/** Regions own independent pointers; only the camera accepts a second finger for pinch. */
 export function bindTouch(root: HTMLElement, sink: TouchSink) {
   const abort = new AbortController();
   const options = { signal: abort.signal };
@@ -36,10 +37,37 @@ export function bindTouch(root: HTMLElement, sink: TouchSink) {
   };
   region(pad, e => { const rect = pad.getBoundingClientRect(); origin = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }; stickMove(e); }, stickMove,
     () => { knob.style.transform = "translate(-50%, -50%)"; sink.setStick(0, 0); });
-  let last = { x: 0, y: 0 };
-  region(root.querySelector("#camera-look")!, e => { last = { x: e.clientX, y: e.clientY }; }, e => {
-    sink.addLook(e.clientX - last.x, e.clientY - last.y); last = { x: e.clientX, y: e.clientY };
-  }, () => {});
+  const camera = root.querySelector<HTMLElement>("#camera-look")!;
+  const fingers = new Map<number, { x: number; y: number }>();
+  const separation = () => {
+    const [a, b] = [...fingers.values()];
+    return Math.hypot(b.x - a.x, b.y - a.y);
+  };
+  camera.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    if (fingers.has(e.pointerId) || fingers.size >= 2) return;
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    camera.setPointerCapture(e.pointerId);
+  }, options);
+  camera.addEventListener("pointermove", e => {
+    const last = fingers.get(e.pointerId);
+    if (!last) return;
+    const before = fingers.size === 2 ? separation() : 0;
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.size === 2) {
+      // Match wheel units: spreading fingers moves the camera closer.
+      sink.addZoom((before - separation()) * 4);
+    } else sink.addLook(e.clientX - last.x, e.clientY - last.y);
+  }, options);
+  const endCamera = (pointerId: number) => {
+    if (!fingers.delete(pointerId)) return;
+    // The surviving finger already has its latest position: no jump on 2 → 1.
+    if (camera.hasPointerCapture(pointerId)) camera.releasePointerCapture(pointerId);
+  };
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"] as const) {
+    camera.addEventListener(type, e => endCamera(e.pointerId), options);
+  }
+  resets.push(() => { for (const id of [...fingers.keys()]) endCamera(id); });
   for (const id of ["jump", "sprint", "interact", "camera"] as const) {
     const button = root.querySelector<HTMLElement>(id === "camera" ? "#camera-touch" : `#${id}`)!;
     region(button, () => sink.setHold(id, true), () => {}, () => { if (id === "sprint") sink.setHold(id, false); });

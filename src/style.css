@@ -72,6 +72,17 @@ h2 { font-size: 1.3rem; }
 }
 #close-sheet { position: sticky; top: 0; float: right; z-index: 1; }
 #sheet article { border-top: 1px solid #a9d6bd66; padding: 8px 0; }
+#progress-dialog {
+  width: min(640px, calc(100vw - var(--safe-left) - var(--safe-right)));
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
+  overflow: auto; overscroll-behavior: contain; padding: 16px;
+  border: 1px solid #a9d6bd; border-radius: 16px; background: #17342a; color: #f4efe4;
+  touch-action: pan-y pinch-zoom;
+}
+#progress-dialog::backdrop { background: #071b13bd; }
+#progress-dialog button { margin: 4px 2px; }
+#close-progress { float: right; position: sticky; top: 0; }
+#progress-status { color: #f3ce7b; }
 #save-status { color: #f3ce7b; margin-right: 90px; }
 #orientation-prompt { position: fixed; z-index: 60; top: var(--safe-top); left: var(--safe-left); right: var(--safe-right); padding: 12px; background: #17342afa; border: 1px solid #f3ce7b; border-radius: 12px; }
 #orientation-prompt span { display: block; margin-bottom: 8px; }

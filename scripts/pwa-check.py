@@ -54,7 +54,7 @@ with tempfile.TemporaryDirectory(prefix='ecowild-pwa-') as tmp:
         page.wait_for_function('navigator.serviceWorker.getRegistration().then(r=>!!r.waiting)',timeout=60000)
         assert page.title()=='EcoWild'
         second=context.new_page();second.goto(url);second.wait_for_function("!document.querySelector('#enter').disabled",timeout=60000)
-        page.locator('#update-app').click();page.wait_for_function("document.querySelector('#pwa-status').textContent.includes('outras abas')")
+        page.locator('#update-app').click();page.wait_for_function("document.querySelector('#pwa-status').textContent.startsWith('Feche as outras abas')")
         assert page.title()=='EcoWild';second.close()
         page.locator('#update-app').click();page.wait_for_function("document.title.includes('atualização testada')",timeout=60000)
         page.locator('#resume').click(timeout=60000);page.locator('#open-pause').click();page.wait_for_selector('[data-pet="STAY"]')

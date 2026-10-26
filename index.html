@@ -26,6 +26,7 @@
       <p>Uma floresta pequena e viva. Observe antes de se aproximar. A Auryn não se domestica só com comida.</p>
       <p id="load-status" role="status">Preparando a mata e lendo progresso…</p><button id="enter" type="button" disabled>Entrar na mata</button>
       <button id="resume" type="button" hidden>Continuar de onde parei</button>
+      <button id="manage-progress" type="button" disabled>Progresso / backup</button>
       <div id="pwa-info"><button id="install" type="button">Instalar / ajuda</button><button id="update-app" type="button" hidden>Salvar e atualizar</button><p id="pwa-status" role="status"></p></div>
     </section>
 
@@ -48,7 +49,7 @@
     </section>
 
     <div id="touch-controls" hidden aria-label="Controles touch">
-      <div id="camera-look" aria-label="Arraste para olhar"></div>
+      <div id="camera-look" aria-label="Arraste para olhar; use dois dedos para aproximar ou afastar"></div>
       <div id="pad" role="application" aria-label="Joystick">
         <span id="pad-knob" aria-hidden="true"></span>
       </div>
@@ -59,6 +60,20 @@
         <button id="camera-touch" class="action-button" type="button">Câmera</button>
       </div>
     </div>
+
+    <dialog id="progress-dialog" aria-labelledby="progress-title">
+      <button id="close-progress" type="button" autofocus>Fechar</button>
+      <h2 id="progress-title">Progresso e backup</h2>
+      <p>Os dados ficam neste navegador. Exporte uma cópia para guardá-la fora dele. Importação de arquivos ainda não está disponível.</p>
+      <p id="progress-status" role="status" aria-live="polite"></p>
+      <h3>Progresso atual</h3><p id="primary-summary"></p>
+      <button id="export-current" type="button">Exportar progresso atual</button>
+      <h3>Cópia de segurança</h3><p id="backup-summary"></p>
+      <button id="export-backup" type="button">Exportar backup</button>
+      <button id="restore-backup" type="button">Restaurar backup…</button>
+      <p>Restaurar troca o progresso pelo backup e guarda o anterior para desfazer. Se houver uma sessão aberta, ela fica no backup na mesma operação. Se a gravação falhar, nada é trocado.</p>
+      <button id="reload-progress" type="button">Recarregar progresso do aparelho…</button>
+    </dialog>
 
     <aside id="orientation-prompt" hidden><span>Para mais espaço, gire o celular na horizontal.</span> <button id="portrait-dismiss" type="button">Continuar assim</button></aside>
     <section id="fatal" role="alert" hidden><p id="fatal-message"></p><button id="retry" type="button">Tentar novamente</button></section>
