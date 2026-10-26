@@ -26,6 +26,7 @@ Terminal 2:
 
 ```bash
 python scripts/browser-check.py --output /tmp/ecowild-mobile
+python scripts/recovery-check.py --output /tmp/ecowild-recovery
 EVIDENCE_DIR=/tmp/ecowild-playthrough python scripts/playthrough-check.py
 ```
 
@@ -51,4 +52,10 @@ Registro do SW e consulta de installability não comprovam instalação pela int
 
 ## Recuperação local de backup
 
-Não há botão de restauração nesta versão. `slots/backup` guarda o payload anterior à última substituição confirmada por novo jogo. Diagnóstico no DevTools → Application → IndexedDB é uma operação manual de QA; exporte os dados antes de qualquer alteração. Não apagar banco para resolver problema de cache/PWA. Se uma versão desconhecida for encontrada, preserve o payload e use a versão correspondente do jogo.
+No título ou na pausa, abra **Progresso / backup**. Exporte progresso/backup para downloads locais; importação ainda não é oferecida. Cancelar a confirmação não altera dados. Restaurar exige backup válido e troca os slots atomicamente; o estado anterior (ou sessão pausada) fica no backup para desfazer. Schema desconhecido é exportável como JSON, mas não carregável. Não apagar banco para resolver cache/PWA.
+
+`recovery-check.py` usa fixtures isoladas e IndexedDB real do Chromium: exportação raw de versão desconhecida; cancelar/restaurar/recarregar com Auryn, diário e comando; conflito entre duas sessões/abas; bloqueio persistente após inspeção/exportação; abort com rollback; backup inválido; restauração antes do primeiro autosave e desfazer; Escape preservando pausa; joystick + pinça com três dedos e transição 2→1; portrait e alvos de toque. Não simula percurso de exploração. `tests/touchInput.test.ts` verifica os listeners ativos, roda, multitouch, cancelamento, foco, resize e descarte; geometria/roteamento nativo são verificados no Chromium.
+
+A versão anterior pode escrever sem coordenação, portanto feche abas antigas antes do teste entre abas atuais. O bloqueio entre sessões é observado na próxima tentativa de gravação, não por um aviso instantâneo de presença de outra aba.
+
+Resultados da continuação após o PR #4: [FOLLOWUP_2026-10-26.md](FOLLOWUP_2026-10-26.md).

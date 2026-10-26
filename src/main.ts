@@ -3,6 +3,7 @@ import type { HudSnapshot } from "./game/EcoWildGame.ts";
 import type { PetCommand, QualityName } from "./game/types.ts";
 import { bindTouch } from "./game/input/touch.ts";
 import { panelHtml } from "./game/ui/panels.ts";
+import { bindProgress } from "./game/ui/progress.ts";
 import { initPwa } from "./pwa.ts";
 import "./style.css";
 
@@ -25,6 +26,7 @@ const game = new EcoWildGame(canvas, {
   },
 });
 const touchBinding = bindTouch(touch, game);
+const progress = bindProgress(game);
 const stopPwa = initPwa(() => game.saveNow(), () => game.open("pause"));
 void game.init(canvas);
 function on(selector: string, event: string, handler: EventListener) {
@@ -32,6 +34,7 @@ function on(selector: string, event: string, handler: EventListener) {
 }
 on("#enter", "click", () => game.start("new"));
 on("#resume", "click", () => game.start("continue"));
+on("#manage-progress", "click", () => void progress.open());
 on("#camera", "click", () => game.setHold("camera", true));
 on("#retry", "click", () => location.reload());
 for (const id of ["catalog", "inventory", "map", "pause"] as const) on("#open-" + id, "click", () => game.open(id));
@@ -58,6 +61,7 @@ function render(hud: HudSnapshot): void {
   title.hidden = hud.playing;
   resume.hidden = !hud.hasSave;
   enter.disabled = !hud.ready;
+  must<HTMLButtonElement>("#manage-progress").disabled = !hud.ready;
   enter.textContent = hud.hasSave ? "Começar novo jogo" : "Entrar na mata";
   must("#load-status").textContent = hud.saveStatus;
   must("#save-status").textContent = hud.saveStatus;
@@ -91,6 +95,7 @@ function render(hud: HudSnapshot): void {
   panelOpen = open;
 }
 function wireSheet(): void {
+  sheet.querySelector("#manage-progress-pause")?.addEventListener("click", () => void progress.open());
   sheet.querySelector("#eat-berry")?.addEventListener("click", () => game.useBerry());
   sheet.querySelector("#save-now")?.addEventListener("click", () => void game.saveNow());
   sheet.querySelector<HTMLSelectElement>("#quality")?.addEventListener("change", e => game.setQuality((e.target as HTMLSelectElement).value as QualityName));
@@ -105,4 +110,4 @@ function must<T extends HTMLElement = HTMLElement>(selector: string): T {
   if (!node) throw new Error(`Elemento ausente: ${selector}`);
   return node;
 }
-if (import.meta.hot) import.meta.hot.dispose(() => { lifecycle.abort(); touchBinding.dispose(); stopPwa(); game.dispose(); });
+if (import.meta.hot) import.meta.hot.dispose(() => { lifecycle.abort(); touchBinding.dispose(); progress.dispose(); stopPwa(); game.dispose(); });

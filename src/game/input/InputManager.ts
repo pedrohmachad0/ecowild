@@ -85,7 +85,7 @@ export class InputManager {
       canvas.addEventListener(type, e => this.dragging.delete(e.pointerId), { signal });
     }
     canvas.addEventListener("wheel", e => {
-      if (this.gameplay) { e.preventDefault(); this.zoom += e.deltaY; }
+      if (this.gameplay) { e.preventDefault(); this.addZoom(e.deltaY); }
     }, { signal, passive: false });
     canvas.addEventListener("contextmenu", e => e.preventDefault(), { signal });
   }
@@ -98,6 +98,7 @@ export class InputManager {
   setStick(x: number, y: number): void { this.stickX = x; this.stickY = y; }
   setHold(name: keyof ReturnType<typeof emptyHold>, down: boolean): void { this.holds[name] = down; }
   addLook(dx: number, dy: number): void { this.lookPx += dx; this.lookPy += dy; }
+  addZoom(delta: number): void { if (this.gameplay && Number.isFinite(delta)) this.zoom += delta; }
   queuePet(command: PetCommand): void { this.petQueued = command; }
 
   sample(): FrameInput {

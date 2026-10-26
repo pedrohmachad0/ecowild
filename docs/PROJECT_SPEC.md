@@ -77,11 +77,11 @@ No estado atual, fichas textuais graduais e save v1 já funcionam; imagens de fi
 
 - Uma floresta pequena navegável, lago, trilhas, árvores, rochas, limites visíveis e locais de observação. Cena imaginária com fauna de diferentes regiões; não apresentar coexistência de lobo-cinzento, águia-real e capivara como ecossistema brasileiro real.
 - Movimento responsivo, diagonal normalizada, corrida/energia, pulo, interação e colisões. Natação superficial já existe; mergulho e exploração aquática complexa são futuros.
-- Terceira pessoa padrão, primeira pessoa alternável, rotação, zoom desktop e prevenção aproximada de obstrução da câmera. Zoom touch e câmera por geometria completa ainda pendentes.
+- Terceira pessoa padrão, primeira pessoa alternável, rotação, zoom desktop/touch e prevenção aproximada de obstrução da câmera. Câmera por geometria completa ainda pendente.
 - Capivara, coelho-tapiti, lobo-cinzento, águia-real e Auryn, com silhuetas e comportamentos distintos. Assets procedurais provisórios são aceitáveis, sem prometer modelos finais.
 - Loop: explorar → colher frutiluz → encontrar Auryn → observar parada → aproximar com calma → oferecer após confiança suficiente → vínculo → seguir/esperar/proteger/voltar → diário → salvar/continuar.
 - Diário com campos bloqueados até descoberta, observação e interação; bolsa com recursos utilizáveis, quantidades limitadas e feedback de coleta/uso. Guia textual pode orientar até haver minimapa real.
-- Save local versionado e validado, falhas visíveis, novo jogo confirmado e backup na substituição. Preferências separadas. Nenhuma conta ou serviço pago obrigatório.
+- Save local versionado e validado, falhas visíveis, novo jogo confirmado e backup na substituição. Restauração confirmada, exportação JSON e proteção contra gravações de sessões desatualizadas. Importação de arquivos futura. Preferências separadas. Nenhuma conta ou serviço pago obrigatório.
 - Touch independente para joystick/câmera/ações, limpeza por cancelamento/captura/foco/orientação, alvos de pelo menos 44 CSS px e safe areas. Portrait orienta girar, mas permite continuar. Menus acessíveis por teclado e todos com pausa consistente.
 - Qualidade auto/baixa/média/alta com efeito real em resolução/vegetação/sombras. Metas de 30 FPS mobile intermediário e 60 FPS PC dependem de medição em hardware.
 

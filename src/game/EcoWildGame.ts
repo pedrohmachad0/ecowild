@@ -5,7 +5,7 @@ import { CONFIG } from "./config.ts";
 import { InputManager } from "./input/InputManager.ts";
 import { basis, clamp } from "./math.ts";
 import { adaptTier, initialTier, scalingFor } from "./performance/quality.ts";
-import { loadSave, writeSave } from "./persistence/save.ts";
+import { SaveSession } from "./persistence/save.ts";
 import { loadPreferences, storePreferences } from "./persistence/preferences.ts";
 import { animateRig, buildCreature, buildPlayer } from "./render/actors.ts";
 import type { Rig } from "./render/actors.ts";
@@ -65,6 +65,10 @@ export class EcoWildGame {
   private saveStatus = "Lendo progresso…";
   private loadStatus = "loading";
   private backupOnWrite = false;
+  private saves = new SaveSession();
+  private progressOpen = false;
+  private recovering = false;
+  private saveConflict = false;
   private saveQueue: Promise<boolean> = Promise.resolve(true);
   private contextLost = false;
   private lastShadow: Forest["shadows"] = null;
@@ -122,7 +126,7 @@ export class EcoWildGame {
       camera.fov = this.fov;
       this.camera = camera;
       this.forest = buildForest(scene, this.tier);
-      const loaded = await loadSave();
+      const loaded = await this.saves.load();
       this.loadStatus = loaded.status;
       this.pendingSave = loaded.data;
       this.saveStatus = loaded.status === "invalid" ? "Save incompatível preservado. Novo jogo pede confirmação." : loaded.status === "unavailable" ? "Armazenamento indisponível. Seu save não foi alterado." : loaded.status === "loaded" ? "Progresso local encontrado." : "Nenhum progresso salvo ainda.";
@@ -183,6 +187,7 @@ export class EcoWildGame {
   addLook(dx: number, dy: number): void {
     this.input.addLook(dx, dy);
   }
+  addZoom(delta: number): void { this.input.addZoom(delta); }
   command(pet: PetCommand): void {
     if (this.sim && this.playing) { commandPet(this.sim, pet); this.pushHud(); void this.saveNow(true); }
   }
@@ -213,6 +218,7 @@ export class EcoWildGame {
     if (auryn?.tamed) auryn.name = clean.trim() || "Auryn";
   }
   saveNow(quiet = false): Promise<boolean> {
+    if (this.recovering || this.saveConflict) return Promise.resolve(false);
     this.saveQueue = this.saveQueue.then(() => this.performSave(quiet));
     return this.saveQueue;
   }
@@ -220,12 +226,53 @@ export class EcoWildGame {
     if (!this.sim || !this.playing) return false;
     const snapshot = toSave(this.sim, { quality: this.quality, lookSens: this.lookSens });
     this.saveStatus = "Gravando…";
-    const ok = await writeSave(snapshot, this.backupOnWrite);
+    const result = await this.saves.write(snapshot, this.backupOnWrite);
+    const ok = result.status === "saved";
+    this.saveConflict = result.status === "conflict";
     if (ok) { this.pendingSave = snapshot; this.backupOnWrite = false; }
-    this.saveStatus = ok ? "Salvo neste aparelho." : "Falha ao salvar. Progresso só nesta sessão; tente Gravar agora.";
+    this.saveStatus = ok ? "Salvo neste aparelho." : this.saveConflict ? "Outra aba alterou o progresso. Exporte esta sessão em Progresso / backup e recarregue para usar o save atual. Esta sessão não sobrescreverá o disco." : "Falha ao salvar. Progresso só nesta sessão; tente Gravar agora.";
     if (!quiet || !ok) this.sim.toasts.push({ text: this.saveStatus, ttl: 3 });
     this.pushHud();
     return ok;
+  }
+  setProgressOpen(open: boolean): void {
+    this.progressOpen = open;
+    if (open && this.playing) this.open("pause");
+    this.input.clear();
+  }
+  async inspectProgress() { return { ...await this.saves.inspect(), session: this.playing }; }
+  async exportProgress(slot: "current" | "backup") {
+    if (slot === "current" && this.sim && this.playing) {
+      return { status: "exported" as const, json: JSON.stringify(toSave(this.sim, { quality: this.quality, lookSens: this.lookSens }), null, 2) };
+    }
+    return this.saves.exportRaw(slot === "current" ? "primary" : "backup");
+  }
+  async restoreProgress(): Promise<boolean> {
+    if (this.recovering || this.saveConflict) return false;
+    this.recovering = true;
+    try {
+      await this.saveQueue;
+      // Preserve unsaved play atomically with the swap; never overwrite the selected backup first.
+      const current = this.playing && this.sim ? toSave(this.sim, { quality: this.quality, lookSens: this.lookSens }) : undefined;
+      const result = await this.saves.restoreBackup(current);
+      if (result.status !== "saved") {
+        this.saveConflict = result.status === "conflict";
+        this.saveStatus = this.saveConflict ? "Outra aba alterou o progresso. Exporte esta sessão e recarregue antes de restaurar." : "Não foi possível restaurar. Os slots foram preservados; verifique o backup e tente novamente.";
+        return false;
+      }
+      this.pendingSave = result.data;
+      this.loadStatus = "loaded";
+      this.backupOnWrite = false;
+      if (this.playing) {
+        this.sim = createSim(result.data);
+        this.camYaw = this.sim.player.yaw;
+        this.acc = this.saveAcc = 0;
+        this.open("pause");
+        this.syncActors(); this.syncProps();
+      }
+      this.saveStatus = "Backup restaurado. O progresso substituído ficou no backup para desfazer.";
+      return true;
+    } finally { this.recovering = false; this.pushHud(); }
   }
   open(panel: "none" | "catalog" | "inventory" | "map" | "pause"): void {
     this.panel = panel;
@@ -321,7 +368,7 @@ export class EcoWildGame {
   }
 
   private handleUi(input: ReturnType<InputManager["sample"]>): void {
-    if (!this.playing) return;
+    if (!this.playing || this.progressOpen) return;
     if (input.pauseEdge) this.open(this.panel === "none" ? "pause" : "none");
     else if (input.catalogEdge) this.open(this.panel === "catalog" ? "none" : "catalog");
     else if (input.inventoryEdge) this.open(this.panel === "inventory" ? "none" : "inventory");
@@ -542,7 +589,7 @@ export class EcoWildGame {
   private exposeProbe(): void {
     window.__controlsTest = {
       getHud: () => this.snapshot(),
-      getCamera: () => ({ mode: this.mode, yaw: this.camYaw }),
+      getCamera: () => ({ mode: this.mode, yaw: this.camYaw, distance: this.camDist, fov: this.fov }),
       getSim: () => this.sim,
       getSceneCounts: () => ({ meshes: this.scene?.meshes.length, materials: this.scene?.materials.length }),
       getYaw: () => this.sim?.player.yaw ?? 0,
@@ -572,7 +619,7 @@ declare global {
   interface Window {
     __controlsTest?: {
       getHud: () => HudSnapshot;
-      getCamera: () => { mode: CameraMode; yaw: number };
+      getCamera: () => { mode: CameraMode; yaw: number; distance: number; fov: number };
       getSim: () => Simulation | null;
       getSceneCounts: () => { meshes?: number; materials?: number };
       getYaw: () => number;
