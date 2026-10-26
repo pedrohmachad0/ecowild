@@ -101,4 +101,3 @@ export function migrateSave(raw: unknown): SaveV1 | null {
     seconds: num(raw.seconds, 0, 0, 1e7),
   };
 }
-
