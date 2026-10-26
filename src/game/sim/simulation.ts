@@ -1,9 +1,10 @@
+import { interactionTarget } from "./interaction.ts";
 import { decide } from "../ai/brain.ts";
 import { CONFIG } from "../config.ts";
 import { SPECIES_BY_ID } from "../data/species.ts";
 import { noteBehavior, noteInteraction, noteSight } from "../catalog/discoveries.ts";
 import { basis, clamp, lerpAngle, mulberry32, resolveCircle } from "../math.ts";
-import { emptyDiscovery } from "../persistence/save.ts";
+import { emptyDiscovery } from "../persistence/schema.ts";
 import { stepBond } from "../taming/bond.ts";
 import type { AiState, DiscoveryFlags, PetCommand, SaveV1, SpeciesId } from "../types.ts";
 import { SPAWNS, obstacles, props as layoutProps } from "../world/layout.ts";
@@ -143,7 +144,7 @@ function makeCreature(
     dip: 0,
     rng: id.split("").reduce((a, ch) => a + ch.charCodeAt(0) * 17, 11),
     startled: 0,
-    aiAcc: 0,
+    aiAcc: (id.charCodeAt(id.length - 1) % 8) / 64,
   };
 }
 
@@ -198,7 +199,7 @@ function groundY(c: SimCreature): number {
 
 export function applySave(sim: Simulation, save: SaveV1): void {
   sim.player.x = save.player.x;
-  sim.player.y = save.player.y;
+  sim.player.y = Math.max(save.player.y, heightAt(save.player.x, save.player.z));
   sim.player.z = save.player.z;
   sim.player.yaw = save.player.yaw;
   sim.player.health = save.player.health || 100;
@@ -219,8 +220,13 @@ export function applySave(sim: Simulation, save: SaveV1): void {
     c.fear = snap.fear;
     c.energy = snap.energy;
     c.trust = snap.trust;
-    c.tamed = snap.tamed;
+    c.tamed = c.speciesId === "auryn" && snap.tamed;
+    const safe = safeGroundPoint(sim, c.x, c.z, c.homeX, c.homeZ, c.speciesId === "capybara");
+    c.x = safe.x; c.z = safe.z; c.tx = c.x; c.tz = c.z;
   }
+  const pos = resolveCircle(sim.player.x, sim.player.z, CONFIG.playerRadius, sim.obstacles, CONFIG.worldRadius);
+  sim.player.x = pos.x; sim.player.z = pos.z;
+  sim.player.y = Math.max(sim.player.y, heightAt(pos.x, pos.z));
   const auryn = sim.creatures.find((c) => c.speciesId === "auryn");
   if (auryn && save.pet && auryn.tamed) {
     auryn.name = save.pet.name;
@@ -262,7 +268,7 @@ export function toSave(
     },
     inventory: { ...sim.inventory },
     picked,
-    discoveries: sim.discoveries,
+    discoveries: structuredClone(sim.discoveries),
     pet:
       auryn?.tamed
         ? { name: auryn.name || sim.petName, xp: auryn.xp, command: auryn.command }
@@ -442,7 +448,9 @@ function updateCreature(sim: Simulation, c: SimCreature, dt: number): void {
   else c.energy = Math.max(0, c.energy - dt * 0.01);
 
   const playerDist = Math.hypot(sim.player.x - c.x, sim.player.z - c.z);
-  const threat = threatOf(sim, c);
+  let threat = threatOf(sim, c);
+  const scaredByPlayer = (profile.temperament === "skittish" || (sim.player.sprinting && (profile.temperament === "calm" || profile.temperament === "curious"))) && playerDist < profile.fleeRadius;
+  if (scaredByPlayer && (!threat || playerDist < threat.d)) threat = { x: sim.player.x, z: sim.player.z, d: playerDist };
   if (threat && threat.d < 8) c.fear = Math.min(1, c.fear + dt * 0.9);
   else c.fear = Math.max(0, c.fear - dt * 0.3);
 
@@ -488,9 +496,10 @@ function updateCreature(sim: Simulation, c: SimCreature, dt: number): void {
 
   if (c.retarget > 0) c.retarget -= dt;
 
-  if (c.state === "FLEE" && threat) {
-    const dx = c.x - threat.x;
-    const dz = c.z - threat.z;
+  if (c.state === "FLEE") {
+    const danger = threat ?? { x: sim.player.x, z: sim.player.z };
+    const dx = c.x - danger.x;
+    const dz = c.z - danger.z;
     const m = Math.hypot(dx, dz) || 1;
     c.tx = c.x + (dx / m) * 7;
     c.tz = c.z + (dz / m) * 7;
@@ -561,12 +570,13 @@ function updateCreature(sim: Simulation, c: SimCreature, dt: number): void {
 
   if (c.tamed && (c.command === "FOLLOW" || c.command === "RETURN" || c.command === "PROTECT")) {
     const moved = Math.hypot(c.x - ox, c.z - oz);
-    if (playerDist > 5 && moved < 0.02) c.stuck += dt;
+    if (playerDist > 5 && moved < profile.speed * dt * 0.15) c.stuck += dt;
     else c.stuck = 0;
-    if (c.stuck > 2.4) {
+    if ((c.stuck > 2.4 && playerDist > 10) || playerDist > 24) {
       const back = basis(sim.player.yaw);
-      c.x = sim.player.x - back.fx * 1.5;
-      c.z = sim.player.z - back.fz * 1.5;
+      const safe = safeGroundPoint(sim, sim.player.x - back.fx * 2, sim.player.z - back.fz * 2, c.homeX, c.homeZ);
+      c.x = safe.x;
+      c.z = safe.z;
       c.y = groundY(c);
       c.stuck = 0;
       toast(sim, "recover", `${c.name || "Auryn"} contornou um obstáculo e voltou para perto.`, 6);
@@ -584,6 +594,8 @@ function updateCreature(sim: Simulation, c: SimCreature, dt: number): void {
       const m = Math.hypot(dx, dz) || 1;
       sim.player.x += (dx / m) * 1.15;
       sim.player.z += (dz / m) * 1.15;
+      const safe = resolveCircle(sim.player.x, sim.player.z, CONFIG.playerRadius, sim.obstacles, CONFIG.worldRadius);
+      sim.player.x = safe.x; sim.player.z = safe.z;
       c.attackCd = 1.45;
       toast(sim, "nip", "O lobo defendeu o território. Recue ou peça proteção à Auryn.", 2.5);
     }
@@ -625,9 +637,7 @@ function updateBond(sim: Simulation, dt: number, offer: boolean): void {
   if (!auryn || auryn.tamed) return;
   const dist = Math.hypot(sim.player.x - auryn.x, sim.player.z - auryn.z);
   const moving = sim.player.speed > 0.4;
-  if (dist < 5.4 && !sim.player.sprinting) auryn.observe = Math.min(8, auryn.observe + dt);
-  else auryn.observe = Math.max(0, auryn.observe - dt * 0.35);
-  const social = sim.creatures.some((c) => c.tamed && c.id !== auryn.id && Math.hypot(c.x - auryn.x, c.z - auryn.z) < 8);
+
   const result = stepBond({
     trust: auryn.trust,
     tamed: false,
@@ -635,13 +645,16 @@ function updateBond(sim: Simulation, dt: number, offer: boolean): void {
     sprinting: sim.player.sprinting,
     moving,
     offer: offer && sim.inventory.glowfruit > 0,
-    observed: auryn.observe >= 2.8,
-    socialAssist: social,
+    observed: auryn.observe >= 3,
+    threatened: auryn.fear > 0.45,
+    socialAssist: false,
     dt,
   });
   auryn.trust = result.trust;
   if (result.startled) auryn.startled = 1.6;
+  if (offer && !result.consumed) toast(sim, "refuse", "Ainda não. Observe parada, espere confiança 58 e ofereça quando ela estiver tranquila. O fruto ficou na bolsa.", 2);
   if (result.consumed) {
+    mark(sim, "auryn", "interact");
     sim.inventory.glowfruit -= 1;
     toast(sim, "offer", result.tamed ? "" : "A Auryn aceitou o frutiluz, mas ainda mede você.", 2);
   }
@@ -662,19 +675,7 @@ function updateWorld(sim: Simulation, input: SimInput, dt: number): void {
   sim.toasts = sim.toasts.filter((t) => t.ttl > 0 && t.text);
   for (const p of sim.props) if (p.depleted > 0) p.depleted -= dt;
 
-  if (input.pet) {
-    const auryn = sim.creatures.find((c) => c.tamed);
-    if (auryn) {
-      auryn.command = input.pet;
-      const labels: Record<PetCommand, string> = {
-        FOLLOW: "seguir",
-        STAY: "esperar",
-        RETURN: "voltar",
-        PROTECT: "proteger",
-      };
-      toast(sim, "cmd", `${auryn.name || "Auryn"} vai ${labels[input.pet]}.`, 0.4);
-    }
-  }
+  if (input.pet) commandPet(sim, input.pet);
 
   const auryn = sim.creatures.find((c) => c.speciesId === "auryn");
   let offer = false;
@@ -682,7 +683,7 @@ function updateWorld(sim: Simulation, input: SimInput, dt: number): void {
   if (auryn?.tamed && auryn.command === "PROTECT") {
     for (const wolf of sim.creatures) {
       if (wolf.speciesId !== "wolf") continue;
-      if (Math.hypot(wolf.x - sim.player.x, wolf.z - sim.player.z) < 11) {
+      if (Math.hypot(wolf.x - sim.player.x, wolf.z - sim.player.z) < 11 && Math.hypot(wolf.x - auryn.x, wolf.z - auryn.z) < 8) {
         wolf.fear = Math.max(wolf.fear, 0.85);
       }
     }
@@ -704,62 +705,20 @@ function updateWorld(sim: Simulation, input: SimInput, dt: number): void {
 }
 
 function interact(sim: Simulation): boolean {
-  let bestD = 2.35;
-  let glow: SimProp | null = null;
-  let berry: SimProp | null = null;
-  let creature: SimCreature | null = null;
-  for (const p of sim.props) {
-    if (p.taken) continue;
-    const d = Math.hypot(p.x - sim.player.x, p.z - sim.player.z);
-    if (d < bestD && p.kind === "glow") {
-      bestD = d;
-      glow = p;
-    }
-  }
-  if (glow) {
-    glow.taken = true;
-    sim.inventory.glowfruit += 1;
-    toast(sim, "pick", "Frutiluz na bolsa. A Auryn reconhece esse fruto — ofereça de perto, sem correr.", 1);
-    return false;
-  }
-  const auryn = sim.creatures.find((c) => c.speciesId === "auryn" && !c.tamed);
-  if (auryn && Math.hypot(auryn.x - sim.player.x, auryn.z - sim.player.z) < 2.4 && sim.inventory.glowfruit > 0 && !sim.player.sprinting) {
-    mark(sim, "auryn", "interact");
-    return true;
-  }
-  bestD = 2.3;
-  for (const c of sim.creatures) {
-    if (c.speciesId === "eagle") continue;
-    const d = Math.hypot(c.x - sim.player.x, c.z - sim.player.z);
-    if (d < bestD) {
-      bestD = d;
-      creature = c;
-    }
-  }
-  if (creature) {
-    mark(sim, creature.speciesId, "interact");
-    const profile = SPECIES_BY_ID[creature.speciesId];
-    toast(sim, "note-" + creature.id, `${profile.name}: ${profile.temperamentLabel.toLowerCase()}, ${profile.dietLabel.toLowerCase()}.`, 2);
-    return false;
-  }
-  bestD = 1.9;
-  for (const p of sim.props) {
-    if (p.kind !== "berry" || p.taken || p.depleted > 0) continue;
-    const d = Math.hypot(p.x - sim.player.x, p.z - sim.player.z);
-    if (d < bestD) {
-      bestD = d;
-      berry = p;
-    }
-  }
-  if (berry) {
-    berry.taken = true;
-    sim.inventory.berries += 1;
-    toast(sim, "berry", "Fruto colhido. Abra a bolsa para comer.", 1.5);
-    return false;
-  }
-  if (sim.player.thirst > 2 && (sim.player.swimming || waterDistance(sim.player.x, sim.player.z) < 1.4)) {
+  const target = interactionTarget(sim);
+  if (target.kind === "collect") {
+    const key = target.prop.kind === "glow" ? "glowfruit" : "berries";
+    if (sim.inventory[key] >= 20) { toast(sim, "full", "A bolsa está cheia para esse fruto.", 2); return false; }
+    target.prop.taken = true;
+    sim.inventory[key] += 1;
+    toast(sim, "pick", key === "glowfruit" ? "Frutiluz na bolsa. Observe a Auryn antes de oferecer." : "Fruto colhido. Abra a bolsa para comer.", 1);
+  } else if (target.kind === "offer") return true;
+  else if (target.kind === "observe") {
+    mark(sim, target.creature.speciesId, "interact");
+    toast(sim, "note-" + target.creature.id, `${SPECIES_BY_ID[target.creature.speciesId].name}: encontro registrado no diário.`, 2);
+  } else if (target.kind === "drink") {
     sim.player.thirst = 0;
-    toast(sim, "drink", "Água do lago. A sede passou.", 2);
+    toast(sim, "drink", "Sede recuperada no lago do jogo. Na natureza, água sem tratamento pode causar doenças.", 2);
   }
   return false;
 }
@@ -781,42 +740,23 @@ function updateDiscoveries(sim: Simulation, dt: number): void {
     const profile = SPECIES_BY_ID[c.speciesId];
     const d = Math.hypot(c.x - sim.player.x, c.z - sim.player.z);
     if (d < profile.sight) mark(sim, c.speciesId, "seen");
-    if (d < 5.5 && !sim.player.sprinting && sim.player.speed < 1.2) c.observe = Math.min(8, c.observe + dt);
+    if (d < (c.speciesId === "eagle" ? 18 : 5.5) && !sim.player.sprinting && sim.player.speed < 1.2) c.observe = Math.min(8, c.observe + dt);
     else c.observe = Math.max(0, c.observe - dt * 0.2);
     if (c.observe > 3) mark(sim, c.speciesId, "behavior");
   }
 }
 
 function makePrompt(sim: Simulation): string {
-  const auryn = sim.creatures.find((c) => c.speciesId === "auryn");
-  for (const p of sim.props) {
-    if (p.kind === "glow" && !p.taken && Math.hypot(p.x - sim.player.x, p.z - sim.player.z) < 1.9) {
-      return "E · colher frutiluz";
-    }
+  const target = interactionTarget(sim);
+  if (target.kind === "collect") return target.prop.kind === "glow" ? "E · colher frutiluz" : "E · colher fruto";
+  if (target.kind === "offer") {
+    const c = target.creature;
+    return c.trust >= 58 && c.observe >= 3 && c.fear <= 0.45 && !sim.player.sprinting ? "E · oferecer frutiluz" : "Observe sem se mover. Espere confiança 58 e tranquilidade antes de oferecer.";
   }
-  if (auryn && !auryn.tamed) {
-    const d = Math.hypot(auryn.x - sim.player.x, auryn.z - sim.player.z);
-    if (d < 6 && sim.player.sprinting) return "Devagar. Correr desfaz a confiança da Auryn.";
-    if (d < 2.4 && sim.inventory.glowfruit > 0) return "E · oferecer frutiluz";
-    if (d < 5.4) {
-      const pct = Math.round(clamp(auryn.trust, 0, 100));
-      return `Confiança ${pct}. Fique perto sem correr.`;
-    }
-  }
-  for (const c of sim.creatures) {
-    if (c.speciesId === "eagle") continue;
-    if (Math.hypot(c.x - sim.player.x, c.z - sim.player.z) < 2.3) {
-      return `E · observar ${SPECIES_BY_ID[c.speciesId].name.toLowerCase()}`;
-    }
-  }
-  for (const p of sim.props) {
-    if (p.kind === "berry" && !p.taken && p.depleted <= 0 && Math.hypot(p.x - sim.player.x, p.z - sim.player.z) < 1.9) {
-      return "E · colher fruto";
-    }
-  }
-  if (sim.player.thirst > 25 && (sim.player.swimming || waterDistance(sim.player.x, sim.player.z) < 1.5)) {
-    return "E · beber no lago";
-  }
+  if (target.kind === "observe") return `E · observar ${SPECIES_BY_ID[target.creature.speciesId].name.toLowerCase()}`;
+  if (target.kind === "drink") return "E · beber no lago";
+  const trust = trustSnapshot(sim);
+  if (trust?.near) return sim.player.sprinting ? "Devagar. Correr desfaz a confiança da Auryn." : `Confiança ${Math.round(trust.value)}. Observe parada; a Auryn se aproxima com confiança.`;
   if (sim.player.swimming) return "Água funda. Nade até a margem.";
   return "";
 }
@@ -840,4 +780,25 @@ export function trustSnapshot(sim: Simulation): { value: number; near: boolean }
   const d = Math.hypot(auryn.x - sim.player.x, auryn.z - sim.player.z);
   if (d > 12) return null;
   return { value: auryn.trust, near: d < 8 };
+}
+
+/** Resolve a dry, collision-free recovery point; never place a land companion in the lake. */
+function safeGroundPoint(sim: Simulation, x: number, z: number, fallbackX: number, fallbackZ: number, water = false) {
+  for (let ring = 0; ring <= 10; ring++) {
+    for (let i = 0; i < 12; i++) {
+      const angle = i * Math.PI / 6;
+      const p = resolveCircle(x + Math.cos(angle) * ring, z + Math.sin(angle) * ring, 0.4, sim.obstacles, CONFIG.worldRadius);
+      if ((water || !isDeepWater(p.x, p.z)) && sim.obstacles.every(o => Math.hypot(p.x - o.x, p.z - o.z) >= o.r + 0.32)) return p;
+    }
+  }
+  return { x: fallbackX, z: fallbackZ };
+}
+
+export function commandPet(sim: Simulation, command: PetCommand): void {
+  const pet = sim.creatures.find(c => c.speciesId === "auryn" && c.tamed);
+  if (!pet) return;
+  pet.command = command;
+  pet.aiAcc = 1 / CONFIG.aiHz;
+  const labels = { FOLLOW: "seguir", STAY: "esperar", RETURN: "voltar", PROTECT: "proteger" };
+  toast(sim, "cmd-" + command, `${pet.name || "Auryn"} vai ${labels[command]}.`, 0.4);
 }

@@ -39,6 +39,6 @@ export function buttonEdges(prev: HoldSet, next: HoldSet) {
   };
 }
 
-export function stickAxes(x: number, y: number): { x: number; y: number } {
-  return radialDeadzone(x, y, 0.16);
+export function stickAxes(x: number, y: number, deadzone = 0.16): { x: number; y: number } {
+  return radialDeadzone(x, y, deadzone);
 }

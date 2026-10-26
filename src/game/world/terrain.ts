@@ -33,11 +33,19 @@ export function pathDistance(x: number, z: number): number {
 }
 
 export function waterDistance(x: number, z: number): number {
-  return Math.max(0, Math.hypot(x - CONFIG.lakeX, z - CONFIG.lakeZ) - 5.6);
+  const distance = Math.hypot(x - CONFIG.lakeX, z - CONFIG.lakeZ);
+  if (distance === 0) return 0;
+  let low = 0, high = 11;
+  for (let i = 0; i < 10; i++) {
+    const mid = (low + high) / 2;
+    if (heightAt(CONFIG.lakeX + (x - CONFIG.lakeX) * mid / distance, CONFIG.lakeZ + (z - CONFIG.lakeZ) * mid / distance) < CONFIG.waterY + 0.1) low = mid;
+    else high = mid;
+  }
+  return Math.max(0, distance - high);
 }
 
 export function isDeepWater(x: number, z: number): boolean {
-  return heightAt(x, z) < CONFIG.waterY - 0.2;
+  return Math.hypot(x - CONFIG.lakeX, z - CONFIG.lakeZ) <= 11 && heightAt(x, z) < CONFIG.waterY - 0.2;
 }
 
 /** 0 shore sand → 1 inland grass, for the terrain texture. */

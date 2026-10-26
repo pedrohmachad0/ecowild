@@ -55,195 +55,116 @@ export class InputManager {
   private override: Set<string> | null = null;
   private prevKeys = new Set<string>();
   private holds = emptyHold();
-  private prevHolds = emptyHold();
-  private sprintLatch = false;
+  private prevPad = emptyHold();
   private lookPx = 0;
   private lookPy = 0;
   private zoom = 0;
   private stickX = 0;
   private stickY = 0;
+  private deadzone = 0.16;
   private petQueued: PetCommand | null = null;
   private dragging = new Set<number>();
-  private disposed = false;
+  private abort = new AbortController();
+  private gameplay = false;
 
   constructor(private canvas: HTMLCanvasElement) {
-    const opt = { passive: false } as const;
-    window.addEventListener("keydown", this.onKeyDown);
-    window.addEventListener("keyup", this.onKeyUp);
-    window.addEventListener("blur", this.clear);
-    document.addEventListener("visibilitychange", this.clear);
-    canvas.addEventListener("pointerdown", this.onPointerDown);
-    window.addEventListener("pointermove", this.onPointerMove);
-    window.addEventListener("pointerup", this.onPointerUp);
-    window.addEventListener("pointercancel", this.onPointerUp);
-    canvas.addEventListener("wheel", this.onWheel, opt);
-    canvas.addEventListener("contextmenu", this.onMenu);
-  }
-
-  /** QA probe: replace the keyboard until the next call. */
-  setKeys(codes: readonly string[]): void {
-    this.override = new Set(codes);
-  }
-
-  setStick(x: number, y: number): void {
-    const d = stickAxes(x, y);
-    this.stickX = d.x;
-    this.stickY = d.y;
-  }
-
-  setHold(name: keyof ReturnType<typeof emptyHold>, down: boolean): void {
-    if (name === "sprint") {
-      if (down) this.sprintLatch = !this.sprintLatch;
-      return;
+    const signal = this.abort.signal;
+    window.addEventListener("keydown", this.onKeyDown, { signal });
+    window.addEventListener("keyup", e => this.keys.delete(e.code), { signal });
+    window.addEventListener("blur", this.clear, { signal });
+    window.addEventListener("resize", this.clear, { signal });
+    document.addEventListener("visibilitychange", this.clear, { signal });
+    canvas.addEventListener("pointerdown", e => {
+      if (!this.gameplay || (e.button !== 0 && e.button !== 2)) return;
+      this.dragging.add(e.pointerId); canvas.setPointerCapture(e.pointerId);
+    }, { signal });
+    canvas.addEventListener("pointermove", e => {
+      if (this.dragging.has(e.pointerId)) this.addLook(e.movementX, e.movementY);
+    }, { signal });
+    for (const type of ["pointerup", "pointercancel", "lostpointercapture"] as const) {
+      canvas.addEventListener(type, e => this.dragging.delete(e.pointerId), { signal });
     }
-    this.holds[name] = down;
+    canvas.addEventListener("wheel", e => {
+      if (this.gameplay) { e.preventDefault(); this.zoom += e.deltaY; }
+    }, { signal, passive: false });
+    canvas.addEventListener("contextmenu", e => e.preventDefault(), { signal });
   }
-
-  addLook(dx: number, dy: number): void {
-    this.lookPx += dx;
-    this.lookPy += dy;
+  setGameplay(active: boolean): void {
+    if (active !== this.gameplay) this.clear();
+    this.gameplay = active;
   }
-
-  queuePet(command: PetCommand): void {
-    this.petQueued = command;
-  }
+  setDeadzone(value: number): void { this.deadzone = Math.max(0.05, Math.min(0.35, value)); }
+  setKeys(codes: readonly string[]): void { this.override = new Set(codes); }
+  setStick(x: number, y: number): void { this.stickX = x; this.stickY = y; }
+  setHold(name: keyof ReturnType<typeof emptyHold>, down: boolean): void { this.holds[name] = down; }
+  addLook(dx: number, dy: number): void { this.lookPx += dx; this.lookPy += dy; }
+  queuePet(command: PetCommand): void { this.petQueued = command; }
 
   sample(): FrameInput {
     const keys = this.override ?? this.keys;
     const axes = axesFromKeys(keys);
-    const stick = stickAxes(this.stickX, this.stickY);
+    const stick = stickAxes(this.stickX, this.stickY, this.deadzone);
     let moveX = axes.moveX + stick.x;
-    let moveZ = axes.moveZ + -stick.y;
-    const mag = Math.hypot(moveX, moveZ);
-    if (mag > 1) {
-      moveX /= mag;
-      moveZ /= mag;
+    let moveZ = axes.moveZ - stick.y;
+    let lookStickX = 0, lookStickY = 0;
+    const pad = emptyHold();
+    for (const gp of navigator.getGamepads?.() ?? []) {
+      if (!gp || gp.mapping !== "standard") continue;
+      const left = stickAxes(gp.axes[0] ?? 0, gp.axes[1] ?? 0, this.deadzone);
+      const right = stickAxes(gp.axes[2] ?? 0, gp.axes[3] ?? 0, this.deadzone);
+      moveX += left.x; moveZ -= left.y;
+      lookStickX += right.x; lookStickY += right.y;
+      pad.jump ||= !!gp.buttons[0]?.pressed;
+      pad.interact ||= !!gp.buttons[1]?.pressed;
+      pad.camera ||= !!gp.buttons[2]?.pressed;
+      pad.catalog ||= !!gp.buttons[3]?.pressed;
+      pad.sprint ||= !!gp.buttons[5]?.pressed || !!gp.buttons[7]?.pressed;
+      pad.pause ||= !!gp.buttons[9]?.pressed;
     }
-    let lookStickX = 0;
-    let lookStickY = 0;
-    let padSprint = false;
-    const pads = typeof navigator !== "undefined" ? navigator.getGamepads?.() : null;
-    if (pads) {
-      for (const gp of pads) {
-        if (!gp) continue;
-        const left = stickAxes(gp.axes[0] ?? 0, gp.axes[1] ?? 0);
-        moveX += left.x;
-        moveZ += -left.y;
-        const right = stickAxes(gp.axes[2] ?? 0, gp.axes[3] ?? 0);
-        lookStickX += right.x;
-        lookStickY += right.y;
-        if (gp.buttons[0]?.pressed) this.holds.jump = true;
-        if (gp.buttons[1]?.pressed) this.holds.interact = true;
-        if (gp.buttons[2]?.pressed) this.holds.camera = true;
-        if (gp.buttons[3]?.pressed) this.holds.catalog = true;
-        if (gp.buttons[5]?.pressed || gp.buttons[7]?.pressed) padSprint = true;
-        if (gp.buttons[9]?.pressed) this.holds.pause = true;
-      }
-      const m2 = Math.hypot(moveX, moveZ);
-      if (m2 > 1) {
-        moveX /= m2;
-        moveZ /= m2;
-      }
-    }
-    const jumpEdge = (keys.has("Space") && !this.prevKeys.has("Space")) || (this.holds.jump && !this.prevHolds.jump);
-    const interactEdge =
-      (keys.has("KeyE") && !this.prevKeys.has("KeyE")) || (this.holds.interact && !this.prevHolds.interact);
+    const mag = Math.max(1, Math.hypot(moveX, moveZ));
+    const edge = (code: string, action: keyof typeof pad) =>
+      (keys.has(code) && !this.prevKeys.has(code)) || this.holds[action] || (pad[action] && !this.prevPad[action]);
     const frame: FrameInput = {
-      moveX,
-      moveZ,
-      lookPx: this.lookPx,
-      lookPy: this.lookPy,
-      lookStickX,
-      lookStickY,
-      sprint: axes.sprint || this.sprintLatch || this.holds.sprint || padSprint,
-      zoom: this.zoom,
-      jumpEdge,
-      interactEdge,
-      useBerryEdge: keys.has("KeyF") && !this.prevKeys.has("KeyF"),
-      cameraEdge: (keys.has("KeyV") && !this.prevKeys.has("KeyV")) || (this.holds.camera && !this.prevHolds.camera),
-      pauseEdge: (keys.has("Escape") && !this.prevKeys.has("Escape")) || (this.holds.pause && !this.prevHolds.pause),
-      catalogEdge: (keys.has("KeyC") && !this.prevKeys.has("KeyC")) || (this.holds.catalog && !this.prevHolds.catalog),
-      inventoryEdge: (keys.has("Tab") && !this.prevKeys.has("Tab")) || (this.holds.inventory && !this.prevHolds.inventory),
-      mapEdge: (keys.has("KeyM") && !this.prevKeys.has("KeyM")) || (this.holds.map && !this.prevHolds.map),
+      moveX: moveX / mag, moveZ: moveZ / mag,
+      lookPx: this.lookPx, lookPy: this.lookPy, lookStickX, lookStickY,
+      sprint: axes.sprint || this.holds.sprint || pad.sprint, zoom: this.zoom,
+      jumpEdge: edge("Space", "jump"), interactEdge: edge("KeyE", "interact"),
+      useBerryEdge: edge("KeyF", "berry"), cameraEdge: edge("KeyV", "camera"),
+      pauseEdge: edge("Escape", "pause"), catalogEdge: edge("KeyC", "catalog"),
+      inventoryEdge: edge("Tab", "inventory"), mapEdge: edge("KeyM", "map"),
       pet: this.petQueued ?? petFromKeyEdge(this.prevKeys, keys),
     };
     this.prevKeys = new Set(keys);
-    this.prevHolds = { ...this.holds };
-    this.holds.camera = false;
-    this.holds.pause = false;
-    this.holds.catalog = false;
-    this.holds.inventory = false;
-    this.holds.map = false;
-    this.holds.jump = false;
-    this.holds.interact = false;
-    this.lookPx = 0;
-    this.lookPy = 0;
-    this.zoom = 0;
+    this.prevPad = pad;
+    this.holds = { ...emptyHold(), sprint: this.holds.sprint };
+    this.lookPx = this.lookPy = this.zoom = 0;
     this.petQueued = null;
     return frame;
   }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    window.removeEventListener("keydown", this.onKeyDown);
-    window.removeEventListener("keyup", this.onKeyUp);
-    window.removeEventListener("blur", this.clear);
-    document.removeEventListener("visibilitychange", this.clear);
-    this.canvas.removeEventListener("pointerdown", this.onPointerDown);
-    window.removeEventListener("pointermove", this.onPointerMove);
-    window.removeEventListener("pointerup", this.onPointerUp);
-    window.removeEventListener("pointercancel", this.onPointerUp);
-    this.canvas.removeEventListener("wheel", this.onWheel);
-    this.canvas.removeEventListener("contextmenu", this.onMenu);
-  }
-
-  private typingTarget(target: EventTarget | null): boolean {
-    const el = target as HTMLElement | null;
-    if (!el) return false;
-    const tag = el.tagName;
-    return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
-  }
-
+  clear = (): void => {
+    this.keys.clear(); this.prevKeys.clear(); this.override = null;
+    this.dragging.clear(); this.stickX = this.stickY = 0;
+    this.holds = emptyHold(); this.prevPad = emptyHold();
+    this.lookPx = this.lookPy = this.zoom = 0; this.petQueued = null;
+  };
+  dispose(): void { this.clear(); this.abort.abort(); }
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (this.typingTarget(e.target)) return;
-    if (GAME_KEYS.has(e.code)) e.preventDefault();
-    this.keys.add(e.code);
-  };
-
-  private onKeyUp = (e: KeyboardEvent): void => {
-    this.keys.delete(e.code);
-  };
-
-  private clear = (): void => {
-    this.keys.clear();
-    this.dragging.clear();
-    this.stickX = 0;
-    this.stickY = 0;
-  };
-
-  private onPointerDown = (e: PointerEvent): void => {
-    if (e.button !== 0 && e.button !== 2) return;
-    this.dragging.add(e.pointerId);
-    this.canvas.setPointerCapture?.(e.pointerId);
-  };
-
-  private onPointerMove = (e: PointerEvent): void => {
-    if (!this.dragging.has(e.pointerId)) return;
-    this.lookPx += e.movementX;
-    this.lookPy += e.movementY;
-  };
-
-  private onPointerUp = (e: PointerEvent): void => {
-    this.dragging.delete(e.pointerId);
-  };
-
-  private onWheel = (e: WheelEvent): void => {
-    e.preventDefault();
-    this.zoom += e.deltaY;
-  };
-
-  private onMenu = (e: Event): void => {
-    e.preventDefault();
+    const el = e.target instanceof HTMLElement ? e.target : null;
+    if (el?.closest("input, textarea, select, [contenteditable=true]")) return;
+    // Menus retain native Tab/Space navigation. Escape still closes a panel.
+    if (!this.gameplay && e.code !== "Escape") return;
+    if (el?.closest("button") && (e.code === "Space" || e.code === "Enter")) return;
+    if (GAME_KEYS.has(e.code)) {
+      e.preventDefault();
+      if (!e.repeat && !this.keys.has(e.code)) {
+        const actions: Record<string, keyof ReturnType<typeof emptyHold>> = {
+          Space: "jump", KeyE: "interact", KeyF: "berry", KeyV: "camera", Escape: "pause", KeyC: "catalog", Tab: "inventory", KeyM: "map",
+        };
+        const action = actions[e.code];
+        if (action) this.holds[action] = true;
+        this.petQueued = petFromKeyEdge(this.keys, new Set([...this.keys, e.code])) ?? this.petQueued;
+      }
+      this.keys.add(e.code);
+    }
   };
 }

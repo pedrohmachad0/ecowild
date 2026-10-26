@@ -1,6 +1,6 @@
 import { SPECIES_BY_ID } from "../data/species.ts";
 import type { DiscoveryFlags, SpeciesId } from "../types.ts";
-import { emptyDiscovery } from "../persistence/save.ts";
+import { emptyDiscovery } from "../persistence/schema.ts";
 
 export function noteSight(flags: DiscoveryFlags): DiscoveryFlags {
   if (flags.seen && flags.habitat) return flags;
