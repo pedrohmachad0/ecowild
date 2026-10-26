@@ -1,192 +1,108 @@
 import { EcoWildGame } from "./game/EcoWildGame.ts";
 import type { HudSnapshot } from "./game/EcoWildGame.ts";
 import type { PetCommand, QualityName } from "./game/types.ts";
+import { bindTouch } from "./game/input/touch.ts";
+import { panelHtml } from "./game/ui/panels.ts";
+import { initPwa } from "./pwa.ts";
 import "./style.css";
 
-const canvas = document.querySelector<HTMLCanvasElement>("#game");
-if (!canvas) throw new Error("Canvas não encontrado");
-
-const title = must("#title");
-const resume = must<HTMLButtonElement>("#resume");
-const vitals = must("#vitals");
-const promptEl = must("#prompt");
-const toasts = must("#toasts");
-const sheet = must("#sheet");
-const touch = must("#touch-controls");
-const playingBar = must("#playing-bar");
-
+const canvas = must<HTMLCanvasElement>("#game");
+const title = must("#title"), resume = must<HTMLButtonElement>("#resume");
+const enter = must<HTMLButtonElement>("#enter");
+const vitals = must("#vitals"), promptEl = must("#prompt"), toasts = must("#toasts");
+const sheet = must("#sheet"), touch = must("#touch-controls"), playingBar = must("#playing-bar");
+const pwaInfo = must("#pwa-info");
+let lastSheet = "", panelOpen = false, touchActive = false;
+let returnFocus: HTMLElement | null = null;
+const lifecycle = new AbortController();
 const game = new EcoWildGame(canvas, {
   onHud: render,
-  onReady: () => undefined,
-  onFatal: (message) => {
-    title.hidden = false;
-    title.querySelector("p")!.textContent = message;
+  onReady: () => { enter.disabled = false; must("#fatal").hidden = true; },
+  onFatal: message => {
+    must("#fatal").hidden = false;
+    must("#fatal-message").textContent = `Não foi possível renderizar a mata. ${message}`;
+    must<HTMLButtonElement>("#retry").focus();
   },
 });
-
+const touchBinding = bindTouch(touch, game);
+const stopPwa = initPwa(() => game.saveNow(), () => game.open("pause"));
 void game.init(canvas);
-
-must("#enter").addEventListener("click", () => game.start("new"));
-resume.addEventListener("click", () => game.start("continue"));
-must("#camera").addEventListener("click", () => game.setHold("camera", true));
-must("#camera-touch").addEventListener("click", () => game.setHold("camera", true));
-must("#jump").addEventListener("pointerdown", (event) => {
-  event.stopPropagation();
-  game.setHold("jump", true);
-});
-must("#interact").addEventListener("pointerdown", (event) => {
-  event.stopPropagation();
-  game.setHold("interact", true);
-});
-must("#sprint").addEventListener("pointerdown", (event) => {
-  event.stopPropagation();
-  game.setHold("sprint", true);
-});
-
-for (const id of ["catalog", "inventory", "map", "pause"] as const) {
-  must("#open-" + id).addEventListener("click", () => game.open(id));
+function on(selector: string, event: string, handler: EventListener) {
+  must(selector).addEventListener(event, handler, { signal: lifecycle.signal });
 }
-must("#close-sheet").addEventListener("click", () => game.open("none"));
-
-wireStick(must("#pad"), must("#pad-knob"));
-wireLook(must("#camera-look"));
-
-let lastSheet = "";
+on("#enter", "click", () => game.start("new"));
+on("#resume", "click", () => game.start("continue"));
+on("#camera", "click", () => game.setHold("camera", true));
+on("#retry", "click", () => location.reload());
+for (const id of ["catalog", "inventory", "map", "pause"] as const) on("#open-" + id, "click", () => game.open(id));
+on("#close-sheet", "click", () => game.open("none"));
+on("#portrait-dismiss", "click", () => { must("#orientation-prompt").hidden = true; });
+let portrait = false;
+function orientation() {
+  const next = coarse() && innerHeight > innerWidth;
+  if (next && !portrait) must("#orientation-prompt").hidden = false;
+  if (!next) must("#orientation-prompt").hidden = true;
+  portrait = next;
+}
+orientation();
+window.addEventListener("resize", orientation, { signal: lifecycle.signal });
+sheet.addEventListener("keydown", e => {
+  if (e.key !== "Tab") return;
+  const nodes = Array.from(sheet.querySelectorAll<HTMLElement>('button:not(:disabled), input, select')).filter(n => n.getClientRects().length);
+  const first = nodes[0], last = nodes.at(-1);
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+}, { signal: lifecycle.signal });
 
 function render(hud: HudSnapshot): void {
   title.hidden = hud.playing;
   resume.hidden = !hud.hasSave;
+  enter.disabled = !hud.ready;
+  enter.textContent = hud.hasSave ? "Começar novo jogo" : "Entrar na mata";
+  must("#load-status").textContent = hud.saveStatus;
+  must("#save-status").textContent = hud.saveStatus;
   playingBar.hidden = !hud.playing;
-  touch.hidden = !hud.playing || !coarse();
-  vitals.textContent = hud.playing
-    ? `Mata da Nascente  ${hud.discovered}/${hud.species}  ·  Fôlego ${Math.round(hud.health)}  ·  Energia ${Math.round(hud.energy)}${hud.trust?.near ? `  ·  Confiança ${Math.round(hud.trust.value)}` : ""}  ·  ${Number.isFinite(hud.fps) && hud.fps > 0 ? hud.fps : "—"} fps`
-    : "";
-  promptEl.hidden = !hud.prompt;
-  promptEl.textContent = hud.prompt;
-  toasts.replaceChildren(
-    ...hud.toasts.slice(-2).map((text) => {
-      const p = document.createElement("p");
-      p.textContent = text;
-      return p;
-    }),
-  );
-  const sig = [
-    hud.panel,
-    hud.inventory.berries,
-    hud.inventory.glowfruit,
-    hud.pet?.command ?? "",
-    hud.catalog.map((c) => c.progress).join(","),
-    hud.quality,
-  ].join("|");
-  if (sig === lastSheet) return;
-  lastSheet = sig;
-  sheet.hidden = hud.panel === "none" || !hud.playing;
-  const body = sheet.querySelector<HTMLElement>("[data-body]");
-  if (body) body.innerHTML = panelHtml(hud);
-  wireSheet();
+  const nextTouch = hud.playing && hud.panel === "none" && coarse();
+  if (!nextTouch && touchActive) touchBinding.clear();
+  touchActive = nextTouch; touch.hidden = !nextTouch;
+  vitals.textContent = hud.playing ? `Diário ${hud.discovered}/${hud.species} · Vida ${Math.round(hud.health)} · Energia ${Math.round(hud.energy)} · Sede ${Math.round(hud.thirst)}` : "";
+  promptEl.hidden = !hud.prompt || !hud.playing;
+  promptEl.textContent = coarse() ? hud.prompt.replace(/^E ·/, "Interagir ·") : hud.prompt;
+  const notices = hud.playing && hud.panel === "none" ? hud.toasts.slice(-1) : [];
+  if (toasts.textContent !== notices.join("")) toasts.replaceChildren(...notices.map(text => { const p = document.createElement("p"); p.textContent = text; return p; }));
+  const open = hud.panel !== "none" && hud.playing;
+  if (open !== panelOpen) {
+    if (open) returnFocus = document.activeElement as HTMLElement;
+    playingBar.inert = open; canvas.inert = open;
+    if (!open) returnFocus?.focus();
+  }
+  const sig = [hud.panel, hud.inventory.berries, hud.inventory.glowfruit, hud.pet?.name, hud.pet?.command, hud.catalog.map(c => c.progress).join(","), hud.quality].join("|");
+  sheet.hidden = !open;
+  if (sig !== lastSheet) {
+    lastSheet = sig;
+    const focusedId = (document.activeElement as HTMLElement)?.id;
+    must("#title").append(pwaInfo);
+    sheet.querySelector<HTMLElement>("[data-body]")!.innerHTML = panelHtml(hud);
+    if (hud.panel === "pause") sheet.append(pwaInfo);
+    wireSheet();
+    if (open && !panelOpen) must<HTMLButtonElement>("#close-sheet").focus();
+    else if (open && focusedId) sheet.querySelector<HTMLElement>(`#${focusedId}`)?.focus();
+  }
+  panelOpen = open;
 }
-
-function panelHtml(hud: HudSnapshot): string {
-  if (hud.panel === "catalog") {
-    return hud.catalog
-      .map(
-        (item) =>
-          `<article><h3>${item.known ? item.name : "Não registrada"}</h3><p>${item.summary}</p><p>${item.curiosity}</p><p>Pesquisa ${item.progress}%</p></article>`,
-      )
-      .join("");
-  }
-  if (hud.panel === "inventory") {
-    return `<p>Frutiluz: ${hud.inventory.glowfruit}. Ofereça à Auryn de perto, sem correr.</p>
-      <p>Fruto da mata: ${hud.inventory.berries}.</p>
-      <button type="button" id="eat-berry" ${hud.inventory.berries ? "" : "disabled"}>Comer fruto</button>`;
-  }
-  if (hud.panel === "map") {
-    return `<p>Oeste: território dos lobos. Leste: lago das capivaras. Sudoeste: bosque do orvalho, onde a Auryn costuma ficar.</p>
-      <ul>${hud.map
-        .map((c) => `<li>${c.known ? c.speciesId : "sinal"} · ${c.tamed ? "companheira" : "livre"}</li>`)
-        .join("")}</ul>`;
-  }
-  if (hud.panel === "pause") {
-    const quals: QualityName[] = ["auto", "low", "medium", "high"];
-    return `<p>Câmera ${hud.camera === "third" ? "em terceira pessoa" : "em primeira pessoa"}. V alterna.</p>
-      <div>${quals
-        .map((q) => `<button type="button" data-q="${q}">${q}</button>`)
-        .join("")}</div>
-      ${
-        hud.pet
-          ? `<p>${hud.pet.name} · nv ${hud.pet.level}</p>
-             <button type="button" data-pet="FOLLOW">Seguir</button>
-             <button type="button" data-pet="STAY">Esperar</button>
-             <button type="button" data-pet="PROTECT">Proteger</button>
-             <button type="button" data-pet="RETURN">Voltar</button>`
-          : ""
-      }
-      <button type="button" id="save-now">Gravar agora</button>`;
-  }
-  return "";
-}
-
 function wireSheet(): void {
   sheet.querySelector("#eat-berry")?.addEventListener("click", () => game.useBerry());
   sheet.querySelector("#save-now")?.addEventListener("click", () => void game.saveNow());
-  sheet.querySelectorAll<HTMLButtonElement>("[data-q]").forEach((button) => {
-    button.addEventListener("click", () => game.setQuality(button.dataset.q as QualityName));
-  });
-  sheet.querySelectorAll<HTMLButtonElement>("[data-pet]").forEach((button) => {
-    button.addEventListener("click", () => game.command(button.dataset.pet as PetCommand));
-  });
+  sheet.querySelector<HTMLSelectElement>("#quality")?.addEventListener("change", e => game.setQuality((e.target as HTMLSelectElement).value as QualityName));
+  sheet.querySelector<HTMLInputElement>("#sensitivity")?.addEventListener("input", e => game.setLookSens(Number((e.target as HTMLInputElement).value)));
+  sheet.querySelector<HTMLInputElement>("#deadzone")?.addEventListener("input", e => game.setDeadzone(Number((e.target as HTMLInputElement).value)));
+  sheet.querySelector("#rename-pet")?.addEventListener("click", () => { game.renamePet(sheet.querySelector<HTMLInputElement>("#pet-name")!.value); void game.saveNow(); });
+  sheet.querySelectorAll<HTMLButtonElement>("[data-pet]").forEach(button => button.addEventListener("click", () => game.command(button.dataset.pet as PetCommand)));
 }
-
-function coarse(): boolean {
-  return window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 860;
-}
-
-function wireStick(pad: HTMLElement, knob: HTMLElement): void {
-  let origin: { x: number; y: number; id: number } | null = null;
-  const move = (event: PointerEvent) => {
-    if (!origin || origin.id !== event.pointerId) return;
-    const dx = event.clientX - origin.x;
-    const dy = event.clientY - origin.y;
-    const m = Math.hypot(dx, dy) || 1;
-    const cap = 48;
-    const scale = Math.min(cap, m) / m;
-    knob.style.transform = `translate(calc(-50% + ${dx * scale}px), calc(-50% + ${dy * scale}px))`;
-    game.setStick((dx * scale) / cap, (dy * scale) / cap);
-  };
-  pad.addEventListener("pointerdown", (event) => {
-    pad.setPointerCapture(event.pointerId);
-    origin = { x: event.clientX, y: event.clientY, id: event.pointerId };
-  });
-  pad.addEventListener("pointermove", move);
-  const end = (event: PointerEvent) => {
-    if (origin?.id !== event.pointerId) return;
-    origin = null;
-    knob.style.transform = "translate(-50%, -50%)";
-    game.setStick(0, 0);
-  };
-  pad.addEventListener("pointerup", end);
-  pad.addEventListener("pointercancel", end);
-}
-
-function wireLook(zone: HTMLElement): void {
-  let last: { x: number; y: number; id: number } | null = null;
-  zone.addEventListener("pointerdown", (event) => {
-    if ((event.target as HTMLElement).closest("button, #pad, #actions")) return;
-    zone.setPointerCapture(event.pointerId);
-    last = { x: event.clientX, y: event.clientY, id: event.pointerId };
-  });
-  zone.addEventListener("pointermove", (event) => {
-    if (!last || last.id !== event.pointerId) return;
-    game.addLook(event.clientX - last.x, event.clientY - last.y);
-    last = { x: event.clientX, y: event.clientY, id: event.pointerId };
-  });
-  zone.addEventListener("pointerup", () => {
-    last = null;
-  });
-}
-
-function must<T extends Element = HTMLElement>(selector: string): T {
+function coarse(): boolean { return matchMedia("(pointer: coarse)").matches; }
+function must<T extends HTMLElement = HTMLElement>(selector: string): T {
   const node = document.querySelector<T>(selector);
   if (!node) throw new Error(`Elemento ausente: ${selector}`);
   return node;
 }
+if (import.meta.hot) import.meta.hot.dispose(() => { lifecycle.abort(); touchBinding.dispose(); stopPwa(); game.dispose(); });

@@ -4,21 +4,29 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
     <meta name="theme-color" content="#10241c" />
+    <meta name="description" content="Explore a Mata da Nascente, observe a fauna e crie vínculo com a Auryn." />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <link rel="icon" href="%BASE_URL%icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="EcoWild" />
     <title>EcoWild</title>
   </head>
   <body>
-    <canvas id="game" aria-label="Mata da Nascente"></canvas>
+    <canvas id="game" aria-label="Mata da Nascente" tabindex="0"></canvas>
 
     <section id="title">
       <p class="eyebrow">Diário de campo · 01</p>
       <h1>EcoWild</h1>
       <p>Mata da Nascente</p>
       <p>Uma floresta pequena e viva. Observe antes de se aproximar. A Auryn não se domestica só com comida.</p>
-      <button id="enter" type="button">Entrar na mata</button>
+      <p id="load-status" role="status">Preparando a mata e lendo progresso…</p><button id="enter" type="button" disabled>Entrar na mata</button>
       <button id="resume" type="button" hidden>Continuar de onde parei</button>
+      <div id="pwa-info"><button id="install" type="button">Instalar / ajuda</button><button id="update-app" type="button" hidden>Salvar e atualizar</button><p id="pwa-status" role="status"></p></div>
     </section>
 
     <div id="playing-bar" hidden>
@@ -32,13 +40,14 @@
       </div>
     </div>
     <p id="prompt" hidden></p>
-    <div id="toasts"></div>
-    <section id="sheet" hidden>
+    <div id="toasts" role="status" aria-live="polite"></div>
+    <section id="sheet" role="dialog" aria-modal="true" aria-labelledby="panel-title" hidden>
       <button id="close-sheet" type="button">Fechar</button>
+      <p id="save-status" role="status"></p>
       <div data-body></div>
     </section>
 
-    <div id="touch-controls" aria-label="Controles touch">
+    <div id="touch-controls" hidden aria-label="Controles touch">
       <div id="camera-look" aria-label="Arraste para olhar"></div>
       <div id="pad" role="application" aria-label="Joystick">
         <span id="pad-knob" aria-hidden="true"></span>
@@ -51,6 +60,9 @@
       </div>
     </div>
 
+    <aside id="orientation-prompt" hidden><span>Para mais espaço, gire o celular na horizontal.</span> <button id="portrait-dismiss" type="button">Continuar assim</button></aside>
+    <section id="fatal" role="alert" hidden><p id="fatal-message"></p><button id="retry" type="button">Tentar novamente</button></section>
+    <noscript>EcoWild precisa de JavaScript e WebGL para abrir a mata.</noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
