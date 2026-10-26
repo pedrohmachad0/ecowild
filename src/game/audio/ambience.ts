@@ -72,6 +72,7 @@ export class Ambience {
     gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.18);
     osc.connect(gain);
     gain.connect(this.master);
+    osc.onended = () => { osc.disconnect(); gain.disconnect(); };
     osc.start();
     osc.stop(this.ctx.currentTime + 0.2);
   }

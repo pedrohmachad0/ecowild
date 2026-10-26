@@ -7,6 +7,7 @@ export type BondInput = {
   offer: boolean;
   observed: boolean;
   socialAssist: boolean;
+  threatened?: boolean;
   dt: number;
 };
 
@@ -20,8 +21,7 @@ export type BondResult = {
 
 /**
  * Feeding alone cannot finish a bond. Calm presence fills trust only up to a cap;
- * a frutiluz offered after that study pushes it over the threshold.
- * A nearby social pet increases the rate (domesticação assistida) but still cannot skip the offer.
+ * one frutiluz is accepted only after observation and sufficient calm trust.
  */
 export function stepBond(p: BondInput): BondResult {
   if (p.tamed) {
@@ -30,16 +30,15 @@ export function stepBond(p: BondInput): BondResult {
   let trust = p.trust;
   let startled = false;
   let consumed = false;
-  if (p.dist < 7 && p.sprinting) {
+  if (p.dist < 7 && (p.sprinting || p.threatened)) {
     trust -= 28 * p.dt;
     startled = true;
   } else if (p.dist < 5.4 && !p.sprinting) {
-    const gain = (p.moving ? 4.5 : 9.5) * p.dt * (p.socialAssist ? 1.35 : 1);
+    const gain = (p.moving ? 4.5 : 9.5) * p.dt * 1;
     if (trust < 68) trust = Math.min(68, trust + gain);
   }
-  if (p.offer && p.dist < 2.4 && !p.sprinting) {
-    const studied = p.observed || trust >= 24;
-    trust += studied ? 42 : 14;
+  if (p.offer && p.dist < 2.4 && !p.sprinting && !p.threatened && p.observed && trust >= 58) {
+    trust = 100;
     consumed = true;
   }
   trust = Math.max(0, Math.min(100, trust));

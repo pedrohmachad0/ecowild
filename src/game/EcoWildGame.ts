@@ -5,12 +5,13 @@ import { CONFIG } from "./config.ts";
 import { InputManager } from "./input/InputManager.ts";
 import { basis, clamp } from "./math.ts";
 import { adaptTier, initialTier, scalingFor } from "./performance/quality.ts";
-import { clearSave, loadSave, writeSave } from "./persistence/save.ts";
+import { loadSave, writeSave } from "./persistence/save.ts";
+import { loadPreferences, storePreferences } from "./persistence/preferences.ts";
 import { animateRig, buildCreature, buildPlayer } from "./render/actors.ts";
 import type { Rig } from "./render/actors.ts";
 import { buildForest } from "./render/forest.ts";
 import type { Forest } from "./render/forest.ts";
-import { createSim, petSnapshot, stepSim, toSave, trustSnapshot } from "./sim/simulation.ts";
+import { commandPet, createSim, petSnapshot, stepSim, toSave, trustSnapshot } from "./sim/simulation.ts";
 import type { Simulation } from "./sim/simulation.ts";
 import type { CameraMode, PetCommand, QualityName, SaveV1 } from "./types.ts";
 import { heightAt } from "./world/terrain.ts";
@@ -60,6 +61,15 @@ export class EcoWildGame {
   private panel: "none" | "catalog" | "inventory" | "map" | "pause" = "none";
   private disposed = false;
   private adaptAcc = 0;
+  private deadzone = 0.16;
+  private saveStatus = "Lendo progresso…";
+  private loadStatus = "loading";
+  private backupOnWrite = false;
+  private saveQueue: Promise<boolean> = Promise.resolve(true);
+  private contextLost = false;
+  private lastShadow: Forest["shadows"] = null;
+  private pendingActions = { jumpEdge: false, interactEdge: false, useBerryEdge: false, pet: null as PetCommand | null };
+  private lifecycle = new AbortController();
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -70,6 +80,13 @@ export class EcoWildGame {
     },
   ) {
     this.input = new InputManager(canvas);
+    const signal = this.lifecycle.signal;
+    canvas.addEventListener("webglcontextlost", (event) => {
+      event.preventDefault(); this.contextLost = true; this.open("pause");
+      this.hooks.onFatal("A conexão gráfica foi interrompida. Aguarde a restauração ou tente novamente.");
+    }, { signal });
+    canvas.addEventListener("webglcontextrestored", () => { this.contextLost = false; this.hooks.onReady(!!this.pendingSave); this.pushHud(); }, { signal });
+    window.addEventListener("blur", this.onBlur, { signal });
   }
 
   useBerry(): void {
@@ -105,25 +122,37 @@ export class EcoWildGame {
       camera.fov = this.fov;
       this.camera = camera;
       this.forest = buildForest(scene, this.tier);
-      this.pendingSave = await Promise.race([
-        loadSave(),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
-      ]);
+      const loaded = await loadSave();
+      this.loadStatus = loaded.status;
+      this.pendingSave = loaded.data;
+      this.saveStatus = loaded.status === "invalid" ? "Save incompatível preservado. Novo jogo pede confirmação." : loaded.status === "unavailable" ? "Armazenamento indisponível. Seu save não foi alterado." : loaded.status === "loaded" ? "Progresso local encontrado." : "Nenhum progresso salvo ainda.";
+      const prefs = loadPreferences(loaded.data?.settings);
+      this.quality = prefs.quality; this.lookSens = prefs.lookSens; this.deadzone = prefs.deadzone;
+      this.input.setDeadzone(this.deadzone);
+      if (this.quality !== "auto") this.tier = this.quality;
+      this.forest.setTier(this.tier); this.applyScale();
       this.sim = createSim(null);
       this.buildActors();
       this.engine.runRenderLoop(() => this.frame());
       window.addEventListener("resize", this.onResize);
       document.addEventListener("visibilitychange", this.onHide);
-      this.exposeProbe();
+      if (import.meta.env.DEV) this.exposeProbe();
       this.hooks.onReady(!!this.pendingSave);
       this.pushHud();
+      this.tryStart();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Não foi possível iniciar a mata.";
+      this.dispose();
       this.hooks.onFatal(message);
     }
   }
 
   start(mode: "new" | "continue"): void {
+    if (!this.sim || this.playing || (mode === "continue" && !this.pendingSave)) return;
+    if (mode === "new" && this.loadStatus !== "empty") {
+      if (!window.confirm("Começar novo jogo? O progresso anterior será substituído após a próxima gravação, com uma cópia local de segurança. Cancelar preserva o jogo atual.")) return;
+      this.backupOnWrite = true;
+    }
     this.wantStart = mode;
     this.tryStart();
   }
@@ -131,8 +160,7 @@ export class EcoWildGame {
   private tryStart(): void {
     if (!this.sim || !this.wantStart || !this.scene) return;
     this.sim = createSim(this.wantStart === "continue" ? this.pendingSave : null);
-    this.quality = this.pendingSave && this.wantStart === "continue" ? this.pendingSave.settings.quality : this.quality;
-    this.lookSens = this.pendingSave && this.wantStart === "continue" ? this.pendingSave.settings.lookSens : this.lookSens;
+    this.input.clear(); this.acc = 0; this.saveAcc = 0;
     if (this.quality !== "auto") this.tier = this.quality;
     this.forest?.setTier(this.tier);
     this.applyScale();
@@ -140,6 +168,8 @@ export class EcoWildGame {
     this.panel = "none";
     this.camYaw = this.sim.player.yaw;
     this.audio.start();
+    this.input.setGameplay(true);
+    this.sim.toasts.push({ text: "Siga a trilha ao bosque do orvalho. Colha frutiluz, observe a Auryn parada e espere confiança 58. Diário, bolsa e comandos ficam no menu.", ttl: 8 });
     this.wantStart = null;
     this.pushHud();
   }
@@ -154,17 +184,26 @@ export class EcoWildGame {
     this.input.addLook(dx, dy);
   }
   command(pet: PetCommand): void {
-    this.input.queuePet(pet);
+    if (this.sim && this.playing) { commandPet(this.sim, pet); this.pushHud(); void this.saveNow(true); }
   }
   setQuality(quality: QualityName): void {
     this.quality = quality;
     if (quality !== "auto") this.tier = quality;
     this.forest?.setTier(this.tier);
     this.applyScale();
+    this.persistPreferences();
     this.pushHud();
   }
   setLookSens(value: number): void {
-    this.lookSens = clamp(value, 0.001, 0.02);
+    this.lookSens = clamp(value, 0.001, 0.02); this.persistPreferences();
+  }
+  setDeadzone(value: number): void {
+    this.deadzone = clamp(value, 0.05, 0.35); this.input.setDeadzone(this.deadzone); this.persistPreferences();
+  }
+  private persistPreferences(): void {
+    if (!storePreferences({ quality: this.quality, lookSens: this.lookSens, deadzone: this.deadzone })) {
+      this.saveStatus = "Preferências válidas só nesta sessão: armazenamento indisponível.";
+    }
   }
   renamePet(name: string): void {
     if (!this.sim) return;
@@ -173,32 +212,33 @@ export class EcoWildGame {
     const auryn = this.sim.creatures.find((c) => c.speciesId === "auryn");
     if (auryn?.tamed) auryn.name = clean.trim() || "Auryn";
   }
-  async saveNow(quiet = false): Promise<void> {
-    if (!this.sim) return;
-    const ok = await writeSave(toSave(this.sim, { quality: this.quality, lookSens: this.lookSens }));
-    if (!quiet) {
-      this.sim.toasts.push({
-        text: ok ? "Progresso gravado neste aparelho." : "Não foi possível gravar agora. O progresso segue nesta sessão.",
-        ttl: 2.6,
-      });
-      this.pushHud();
-    }
+  saveNow(quiet = false): Promise<boolean> {
+    this.saveQueue = this.saveQueue.then(() => this.performSave(quiet));
+    return this.saveQueue;
   }
-  async resetProgress(): Promise<void> {
-    await clearSave();
-    this.pendingSave = null;
-    this.sim = createSim(null);
-    this.playing = true;
-    this.panel = "none";
+  private async performSave(quiet: boolean): Promise<boolean> {
+    if (!this.sim || !this.playing) return false;
+    const snapshot = toSave(this.sim, { quality: this.quality, lookSens: this.lookSens });
+    this.saveStatus = "Gravando…";
+    const ok = await writeSave(snapshot, this.backupOnWrite);
+    if (ok) { this.pendingSave = snapshot; this.backupOnWrite = false; }
+    this.saveStatus = ok ? "Salvo neste aparelho." : "Falha ao salvar. Progresso só nesta sessão; tente Gravar agora.";
+    if (!quiet || !ok) this.sim.toasts.push({ text: this.saveStatus, ttl: 3 });
     this.pushHud();
+    return ok;
   }
   open(panel: "none" | "catalog" | "inventory" | "map" | "pause"): void {
     this.panel = panel;
+    this.acc = 0;
+    this.pendingActions = { jumpEdge: false, interactEdge: false, useBerryEdge: false, pet: null };
+    this.input.setGameplay(this.playing && panel === "none");
+    if (panel === "none" && this.playing) this.audio.start();
     this.pushHud();
   }
 
   dispose(): void {
     this.disposed = true;
+    this.lifecycle.abort();
     window.removeEventListener("resize", this.onResize);
     document.removeEventListener("visibilitychange", this.onHide);
     this.input.dispose();
@@ -218,6 +258,7 @@ export class EcoWildGame {
 
   private frame(): void {
     if (!this.engine || !this.scene || !this.sim || !this.camera || this.disposed) return;
+    if (this.contextLost || document.hidden) return;
     const dt = Math.min(this.engine.getDeltaTime() / 1000, CONFIG.maxFrame);
     this.time += dt;
     const input = this.input.sample();
@@ -225,6 +266,10 @@ export class EcoWildGame {
     const blocked = !this.playing || this.panel !== "none";
     const camYaw = this.camYaw;
     if (!blocked) {
+      this.pendingActions.jumpEdge ||= input.jumpEdge;
+      this.pendingActions.interactEdge ||= input.interactEdge;
+      this.pendingActions.useBerryEdge ||= input.useBerryEdge;
+      this.pendingActions.pet = input.pet ?? this.pendingActions.pet;
       this.acc += dt;
       let first = true;
       let guard = 0;
@@ -236,14 +281,15 @@ export class EcoWildGame {
             moveZ: input.moveZ,
             camYaw,
             sprint: input.sprint,
-            jumpEdge: first && input.jumpEdge,
-            interactEdge: first && input.interactEdge,
-            useBerryEdge: first && input.useBerryEdge,
-            pet: first ? input.pet : null,
+            jumpEdge: first && this.pendingActions.jumpEdge,
+            interactEdge: first && this.pendingActions.interactEdge,
+            useBerryEdge: first && this.pendingActions.useBerryEdge,
+            pet: first ? this.pendingActions.pet : null,
             discover: true,
           },
           CONFIG.fixedDt,
         );
+        this.pendingActions = { jumpEdge: false, interactEdge: false, useBerryEdge: false, pet: null };
         first = false;
         this.acc -= CONFIG.fixedDt;
         guard++;
@@ -276,12 +322,10 @@ export class EcoWildGame {
 
   private handleUi(input: ReturnType<InputManager["sample"]>): void {
     if (!this.playing) return;
-    if (input.pauseEdge) {
-      if (this.panel === "none") this.panel = "pause";
-      else this.panel = "none";
-    } else if (input.catalogEdge) this.panel = this.panel === "catalog" ? "none" : "catalog";
-    else if (input.inventoryEdge) this.panel = this.panel === "inventory" ? "none" : "inventory";
-    else if (input.mapEdge) this.panel = this.panel === "map" ? "none" : "map";
+    if (input.pauseEdge) this.open(this.panel === "none" ? "pause" : "none");
+    else if (input.catalogEdge) this.open(this.panel === "catalog" ? "none" : "catalog");
+    else if (input.inventoryEdge) this.open(this.panel === "inventory" ? "none" : "inventory");
+    else if (input.mapEdge) this.open(this.panel === "map" ? "none" : "map");
     if (input.cameraEdge && this.panel === "none") {
       this.mode = this.mode === "third" ? "first" : "third";
     }
@@ -331,7 +375,11 @@ export class EcoWildGame {
       this.camPos.y + (cy - this.camPos.y) * k,
       this.camPos.z + (cz - this.camPos.z) * k,
     );
-    this.lookAt.set(p.x, pivotY, p.z);
+    this.camera.position.y = Math.max(this.camera.position.y, heightAt(this.camera.position.x, this.camera.position.z) + 0.25);
+    if (this.mode === "first") {
+      this.camera.position.set(p.x, pivotY, p.z);
+      this.lookAt.set(p.x + b.fx * Math.cos(this.camPitch), pivotY - Math.sin(this.camPitch), p.z + b.fz * Math.cos(this.camPitch));
+    } else this.lookAt.set(p.x, pivotY, p.z);
     this.camera.setTarget(this.lookAt);
     this.camera.fov = this.mode === "first" ? this.fov : 0.9;
     if (this.playerRig) this.playerRig.root.setEnabled(this.mode === "third");
@@ -361,6 +409,13 @@ export class EcoWildGame {
 
   private syncActors(): void {
     if (!this.sim || !this.playerRig) return;
+    const shadows = this.forest?.shadows ?? null;
+    if (shadows && shadows !== this.lastShadow) {
+      for (const rig of [this.playerRig, ...this.rigs.values()]) {
+        for (const mesh of rig.root.getChildMeshes()) shadows.addShadowCaster(mesh, false);
+      }
+    }
+    this.lastShadow = shadows;
     const p = this.sim.player;
     this.playerRig.root.position.set(p.x, p.y, p.z);
     this.playerRig.root.rotation.y = p.yaw + Math.PI;
@@ -372,13 +427,7 @@ export class EcoWildGame {
       rig.root.position.set(c.x, c.y + hop, c.z);
       rig.root.rotation.y = c.yaw + Math.PI;
       animateRig(rig, c.phase, c.moving, this.time);
-      if (this.forest?.shadows && this.tier === "high") {
-        const child = rig.root.getChildMeshes(false)[0];
-        if (child && !child.metadata?.shadow) {
-          this.forest.shadows.addShadowCaster(child, true);
-          child.metadata = { shadow: true };
-        }
-      }
+
     }
   }
 
@@ -420,6 +469,7 @@ export class EcoWildGame {
     if (!sim) {
       return {
         ready: false,
+        lookSens: this.lookSens, deadzone: this.deadzone, saveStatus: this.saveStatus,
         playing: false,
         health: 100,
         energy: 100,
@@ -451,6 +501,7 @@ export class EcoWildGame {
     const catalog = catalogView(sim.discoveries);
     return {
       ready: true,
+      lookSens: this.lookSens, deadzone: this.deadzone, saveStatus: this.saveStatus,
       playing: this.playing,
       health: sim.player.health,
       energy: sim.player.energy,
@@ -490,12 +541,18 @@ export class EcoWildGame {
 
   private exposeProbe(): void {
     window.__controlsTest = {
+      getHud: () => this.snapshot(),
+      getCamera: () => ({ mode: this.mode, yaw: this.camYaw }),
+      getSim: () => this.sim,
+      getSceneCounts: () => ({ meshes: this.scene?.meshes.length, materials: this.scene?.materials.length }),
       getYaw: () => this.sim?.player.yaw ?? 0,
       getSpeed: () => this.sim?.player.speed ?? 0,
       setKeys: (codes: string[]) => this.input.setKeys(codes),
       getPos: () => ({ x: this.sim?.player.x ?? 0, z: this.sim?.player.z ?? 0 }),
     };
   }
+
+  private onBlur = (): void => { if (this.playing) this.open("pause"); };
 
   private onResize = (): void => {
     this.applyScale();
@@ -504,6 +561,7 @@ export class EcoWildGame {
 
   private onHide = (): void => {
     if (document.hidden) {
+      this.onBlur();
       this.audio.suspend();
       if (this.playing) void this.saveNow(true);
     }
@@ -513,6 +571,10 @@ export class EcoWildGame {
 declare global {
   interface Window {
     __controlsTest?: {
+      getHud: () => HudSnapshot;
+      getCamera: () => { mode: CameraMode; yaw: number };
+      getSim: () => Simulation | null;
+      getSceneCounts: () => { meshes?: number; materials?: number };
       getYaw: () => number;
       getSpeed: () => number;
       setKeys: (codes: string[]) => void;
@@ -523,6 +585,9 @@ declare global {
 
 export type HudSnapshot = {
   ready: boolean;
+  lookSens: number;
+  deadzone: number;
+  saveStatus: string;
   playing: boolean;
   health: number;
   energy: number;

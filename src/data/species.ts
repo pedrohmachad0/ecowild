@@ -1,2 +1,17 @@
-import type {Species} from '../entities/Species';
-export const species:Species[]=[{id:'capybara',name:'Capivara',scientificName:'Hydrochoerus hydrochaeris',taxon:'mammal',habitats:['terrestrial','semi-aquatic'],diet:['plants'],temperament:'peaceful',tameable:false,fictional:false},{id:'rabbit',name:'Coelho',taxon:'mammal',habitats:['terrestrial'],diet:['plants'],temperament:'fearful',tameable:false,fictional:false},{id:'wolf',name:'Lobo',taxon:'mammal',habitats:['terrestrial'],diet:['meat'],temperament:'territorial',tameable:false,fictional:false},{id:'eagle',name:'Águia',taxon:'bird',habitats:['aerial'],diet:['meat'],temperament:'territorial',tameable:false,fictional:false},{id:'lumifox',name:'Lumirraposa',taxon:'fantasy',habitats:['terrestrial'],diet:['berries'],temperament:'curious',tameable:true,fictional:true}];
+import type { Species } from '../entities/Species';
+import { SPECIES } from '../game/data/species';
+
+/** Compatibility view for the original foundation; gameplay uses SPECIES directly.
+ * lumifox was the historical ID of the creature now called Auryn, not another species.
+ */
+export const species: Species[] = SPECIES.map(profile => ({
+  id: profile.id === 'auryn' ? 'lumifox' : profile.id,
+  name: profile.name,
+  scientificName: profile.scientific ?? undefined,
+  taxon: profile.id === 'auryn' ? 'fantasy' : profile.id === 'eagle' ? 'bird' : 'mammal',
+  habitats: profile.id === 'eagle' ? ['aerial'] : profile.id === 'capybara' ? ['terrestrial', 'semi-aquatic'] : ['terrestrial'],
+  diet: [profile.diet],
+  temperament: ({ calm: 'peaceful', skittish: 'fearful', territorial: 'territorial', curious: 'curious', predatory: 'aggressive' } as const)[profile.temperament],
+  tameable: profile.domesticable,
+  fictional: profile.scientific === null,
+}));

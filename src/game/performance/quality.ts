@@ -21,7 +21,7 @@ export function adaptTier(mode: QualityName, tier: AppliedTier, avgFps: number):
 
 export function scalingFor(tier: AppliedTier, dpr: number): number {
   const cap = tier === "high" ? Math.min(dpr, 1.75) : tier === "medium" ? Math.min(dpr, 1.15) : Math.min(dpr, 0.9);
-  return dpr / Math.max(0.7, cap);
+  return 1 / Math.max(0.7, cap);
 }
 
 export function grassCount(tier: AppliedTier): number {

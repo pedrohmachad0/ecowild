@@ -16,7 +16,10 @@ export type Rig = {
 };
 
 function material(scene: Scene, name: string, hex: string, emissive = "#000000"): StandardMaterial {
-  const m = new StandardMaterial(name, scene);
+  const key = `actor-${hex}-${emissive}`;
+  const shared = scene.getMaterialByName(key);
+  if (shared instanceof StandardMaterial) return shared;
+  const m = new StandardMaterial(key, scene);
   m.diffuseColor = Color3.FromHexString(hex);
   m.specularColor = new Color3(0.06, 0.06, 0.05);
   m.emissiveColor = Color3.FromHexString(emissive);
@@ -192,8 +195,8 @@ export function buildPlayer(scene: Scene): Rig {
   const pack = material(scene, "pack", "#6b4a32");
   sphere(scene, "pack", root, pack, 0.28, 0.32, 0.16, 0, 1.08, -0.16);
   const legs = [
-    leg(scene, root, boot, -0.1, 0, 0.48),
-    leg(scene, root, boot, 0.1, 0, 0.48),
+    leg(scene, root, boot, -0.1, 0, 0.78),
+    leg(scene, root, boot, 0.1, 0, 0.78),
   ];
   legs[0]!.position.y = 0.78;
   legs[1]!.position.y = 0.78;

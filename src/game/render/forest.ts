@@ -126,16 +126,16 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   for (const tree of treeList()) {
     const h = heightAt(tree.x, tree.z);
     const scale = 0.9 + ((ti * 17) % 5) * 0.08;
-    const trunk = MeshBuilder.CreateCylinder("trunk", { height: 1.5, diameter: 0.28, tessellation: 6 }, scene);
-    trunk.position.set(tree.x, h + 0.75 * scale, tree.z);
+    const trunk = MeshBuilder.CreateCylinder("trunk", { height: 3.7, diameter: 0.85, tessellation: 6 }, scene);
+    trunk.position.set(tree.x, h + 1.85 * scale, tree.z);
     trunk.scaling.set(scale, scale, scale);
     trunks.push(trunk);
-    const crown = MeshBuilder.CreateSphere("crown", { diameter: 1.55, segments: 6 }, scene);
-    crown.position.set(tree.x, h + 1.7 * scale, tree.z);
+    const crown = MeshBuilder.CreateSphere("crown", { diameter: 3.4, segments: 6 }, scene);
+    crown.position.set(tree.x, h + 4.1 * scale, tree.z);
     crown.scaling.set(scale * 1.05, scale * 0.85, scale);
     leaves[ti % 3]!.push(crown);
-    const crown2 = MeshBuilder.CreateSphere("crown2", { diameter: 1.05, segments: 5 }, scene);
-    crown2.position.set(tree.x + 0.35 * scale, h + 1.45 * scale, tree.z + 0.2);
+    const crown2 = MeshBuilder.CreateSphere("crown2", { diameter: 2.4, segments: 5 }, scene);
+    crown2.position.set(tree.x + 0.35 * scale, h + 3.4 * scale, tree.z + 0.2);
     crown2.scaling.set(scale, scale * 0.8, scale);
     leaves[(ti + 1) % 3]!.push(crown2);
     ti++;
@@ -163,6 +163,15 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
     }
   }
 
+  // A low trail boundary makes the simulation's circular limit visible.
+  const border: Vector3[] = [];
+  for (let i = 0; i <= 120; i++) {
+    const angle = i * Math.PI / 60;
+    const x = Math.cos(angle) * CONFIG.worldRadius, z = Math.sin(angle) * CONFIG.worldRadius;
+    border.push(new Vector3(x, heightAt(x, z) + 0.5, z));
+  }
+  const rope = MeshBuilder.CreateLines("limite-da-trilha", { points: border }, scene);
+  rope.color = Color3.FromHexString("#ead8a2"); rope.isPickable = false;
   const rockMat = mat(scene, "rock", "#7d756c");
   const rockParts: Mesh[] = [];
   for (const rock of rockList()) {
