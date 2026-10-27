@@ -2,6 +2,8 @@
 
 Jogo web 3D de exploração, biologia e fantasia de Pedro Henrique Machado dos Santos. A **Mata da Nascente** é um protótipo jogável: cinco espécies, 11 animais com IA simples, coleta, diário gradual, vínculo com a **Auryn**, comandos de companheira e progresso local. Single-player, sem conta ou telemetria.
 
+Os cinco animais agora têm modelos próprios mais detalhados, olhos, patas, caudas/penas e poses de comportamento. Veja [a comparação visual e a validação da fauna](docs/FAUNA_2026-10-27.md). **Observar** aproxima a câmera de um animal conhecido e mostra seu estado e o próximo passo para criar vínculo com Auryn.
+
 ## Executar e verificar
 
 Node.js 20.19+ ou 22.12+.
@@ -26,11 +28,14 @@ Siga a trilha desde a clareira até o bosque do orvalho, a sudoeste do lago. Col
 | Mover / correr | WASD ou setas / segurar Shift | Joystick / segurar Correr |
 | Olhar / zoom | Arrastar mouse / roda | Arrastar região direita; pinça com dois dedos para zoom |
 | Pular / interagir / câmera | Espaço / E / V | Botões correspondentes |
+| Observar animal / voltar | Q, com animal conhecido próximo | Observar / Voltar no menu superior |
 | Diário / bolsa / guia / pausa | C / Tab / M / Esc | Menu superior |
 | Comer fruto | F ou bolsa | Bolsa |
 | Seguir / esperar / proteger / voltar | 1 / 2 / 3 / 4 | Pausa → companheira |
 
 Todos os painéis pausam a simulação. Comandos escolhidos na pausa são registrados imediatamente e executados ao retornar. Proteção afasta lobos próximos da companheira; não funciona à distância. O guia descreve marcos, não é um minimapa. Há natação superficial simplificada no lago, sem mergulho. Qualidade, sensibilidade e zona morta estão em Pausa e persistem separadas do progresso. Gamepad padrão possui mapeamento básico; não há validação física de controle.
+
+A câmera de observação permite girar e aproximar, mas a simulação continua: animais fogem e lobos ainda podem atacar. Mover, pular, apertar Q/Voltar ou trocar a câmera encerra o enquadramento. O foco exige animal já avistado, próximo e sem bloqueio pelos volumes de árvores/rochas/terreno; ele não concede descobertas ou confiança. O diário ainda registra por proximidade e calma, sem percepção visual rigorosa. A câmera recua diante de troncos, copas, rochas e solo por volumes aproximados.
 
 ## Progresso e instalação
 
@@ -45,6 +50,6 @@ Todos os painéis pausam a simulação. Comandos escolhidos na pausa são regist
 
 Veja [continuação e testes de recuperação/zoom](docs/FOLLOWUP_2026-10-26.md), [auditoria e validação](docs/AUDIT_2026-10-26.md), [arquitetura](docs/ARCHITECTURE.md), [roadmap](docs/ROADMAP.md) e [roteiros reproduzíveis](docs/TESTING.md). Emulação Chromium é separada de teste físico: **iPhone/Safari, Android/Chrome e instalação pelo sistema operacional ainda precisam de validação real**. 30 FPS mobile e 60 FPS PC são metas, não garantias.
 
-A mata é um ambiente imaginário que reúne fauna de regiões diferentes. Auryn e frutiluz são fantasia explícita; lobos-cinzentos e águias-reais não são nativos do Brasil. Modelos e sons são procedurais e provisórios; fontes das informações e origem dos ícones estão em [ASSETS.md](docs/ASSETS.md).
+A mata é um ambiente imaginário que reúne fauna de regiões diferentes. Auryn e frutiluz são fantasia explícita; lobos-cinzentos e águias-reais não são nativos do Brasil. Os animais usam geometria estilizada original e animações por articulações, ainda sem rig esquelético/IK ou LOD. Mundo, jogador e sons continuam procedurais; fontes das informações e origem dos assets estão em [ASSETS.md](docs/ASSETS.md).
 
 Comece contribuições por [AGENTS.md](AGENTS.md). Os arquivos `agents/*.md` são instruções, não processos automáticos.

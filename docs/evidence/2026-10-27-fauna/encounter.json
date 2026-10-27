@@ -1,0 +1,12 @@
+{
+  "fixture": true,
+  "observation": "button + Q; moving exits; menus hide note; V still toggles",
+  "bond_not_granted_by_camera": true,
+  "tree_boom_distance": 1.5140669379492018,
+  "requested_distance": 6.4,
+  "scene_counts_stable": {
+    "meshes": 128,
+    "materials": 24
+  },
+  "errors": []
+}

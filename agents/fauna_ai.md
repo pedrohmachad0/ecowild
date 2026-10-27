@@ -17,3 +17,5 @@ A fauna inclui **animais reais e monstros originais**. Modelar duas classificaç
 As responsabilidades acima preservam o escopo do PR #3. Requisitos-alvo não significam implementação completa; confira o estado em `docs/ROADMAP.md` e as evidências em `docs/TESTING.md`.
 
 Perfis vêm de `game/data/species.ts`; indivíduos ficam na simulação. Distinga reação real do seletor de estado: FLEE precisa escolher ameaça e alvo corretos. Evite processamento caro por frame ao aumentar população. A mata é fictícia, com espécies de regiões diferentes; não atribuir a ela biogeografia brasileira literal.
+
+A fauna ativa usa modelos procedurais originais articulados em `game/render/creatures/`; a menção a placeholders acima não exige importar glTF nem substituir essa arte. Evolua silhueta/anatomia/poses sem mover a raiz da simulação ou duplicar perfis. Compare renders e orçamento de meshes/triângulos. O foco da câmera não substitui percepção da IA/diário nem concede confiança.

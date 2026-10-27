@@ -9,19 +9,27 @@ Stack: Babylon.js 7.54.3, TypeScript estrito, Vite 6, HTML/CSS e Vitest. Sem ser
 3. `game/EcoWildGame.ts` orquestra engine, cena, câmera, passos fixos de 1/60 s, painéis, áudio, qualidade e gravação. Delta limitado a 50 ms e até cinco passos por frame. Todos os painéis pausam; blur/aba oculta abre pausa. Volta exige ação do jogador.
 4. `game/sim/simulation.ts` contém estado puro, movimento, IA, coleta, descoberta e vínculo. `sim/interaction.ts` escolhe o mesmo alvo para prompt e interação. `ai/brain.ts` decide prioridades; `taming/bond.ts` valida oferta e confiança; `catalog/discoveries.ts` produz fichas graduais.
 5. `game/data/species.ts` é a fonte ativa dos perfis; `world/layout.ts` fornece spawns, recursos e obstáculos; `world/terrain.ts` fornece altura, trilha, água visível e margem.
-6. `render/forest.ts` e `render/actors.ts` projetam esse estado em meshes. Nenhuma mesh é serializada. Atores são criados uma vez e sincronizados por ID. Árvores/rochas são mescladas; grama usa thin instances; materiais de atores são compartilhados por cor. Câmera tem encurtamento por círculos de obstáculos e piso pelo terreno, não raycast completo de copa/mesh.
+6. `render/forest.ts` e `render/actors.ts` projetam esse estado em meshes. Nenhuma mesh é serializada. Atores são criados uma vez e sincronizados por ID. `render/creatures/` constrói e anima os cinco modelos; cores por vértice e dois materiais compartilhados para pelagem/plumagem e luminosidade. Peças estáticas são mescladas por articulação; `rig.ts` conserva poses locais e `animate.ts` recebe estado/medo/vínculo sem alterar a raiz da simulação. Árvores/rochas são mescladas; grama usa thin instances.
 7. `ui/panels.ts` apresenta diário, bolsa, guia e ajustes; `ui/progress.ts` controla o diálogo nativo de exportação/recuperação, foco e confirmação; nomes de pets são escapados antes de HTML. `audio/ambience.ts` sintetiza vento/pássaros localmente e libera os nós de chirp ao terminar.
 8. `persistence/schema.ts` valida v1 e normaliza campos conhecidos; `save.ts` executa transações IndexedDB com timeout, abort/error, fechamento e fila de escrita. `preferences.ts` guarda apenas qualidade/sensibilidade/deadzone em localStorage com fallback de sessão.
 
 O orquestrador ainda é grande, assim como a simulação. A extração de interação, schema, touch e painéis reduz responsabilidades; separar percepção/navegação é o próximo passo, sem substituir o motor atual.
 
+## Câmera e apresentação dos encontros
+
+`camera/boom.ts` resolve o segmento entre pivô e posição desejada contra cilindros finitos, elipsoides e amostras do terreno. `worldVolumes.ts` cria uma vez os volumes de troncos, duas copas por árvore e rochas conforme `render/forest.ts`. Recuo é imediato; somente a extensão da distância é suavizada, mantendo a órbita atual para não cortar caminho através de obstáculos. Não é raycast de triângulos; arbustos e animais não bloqueiam a câmera. Se o pivô iniciar dentro do volume, ela retrai ao pivô. O personagem fica oculto no foco e quando o recuo aproxima demais a câmera.
+
+Q/botão Observar → `EcoWildGame.toggleObservation` → `camera/observation.ts` escolhe o animal já conhecido mais próximo, até 8 m em 3D, com linha livre pelos mesmos volumes. O foco acompanha até 12 m, permite rotação/zoom e restaura a vista anterior ao sair por movimento/pulo/Q/V ou perda do alvo. Foco é temporário, não salvo, não pausa nem protege o jogador. A nota lateral recebe estado da simulação e `bondReadiness`, compartilha limites com a regra real e respeita a prioridade de coleta de `interactionTarget`. O foco não modifica descoberta, itens ou confiança.
+
 ## IA, terreno e vínculo
 
-Há 11 indivíduos de cinco espécies. Seleção de estado ocorre aproximadamente a 8 Hz, com fases iniciais distintas; locomoção e necessidades usam delta time. Consultas simples de vizinhança ainda ocorrem por passo para esses 11 atores: não há LOD de IA nem particionamento espacial. Aleatoriedade de criaturas tem seed. Percepção/discovery são por distância, sem linha de visão/cone ou memória sofisticada.
+Há 11 indivíduos de cinco espécies. Seleção de estado ocorre aproximadamente a 8 Hz, com fases iniciais distintas; locomoção e necessidades usam delta time. Consultas simples de vizinhança ainda ocorrem por passo para esses 11 atores: não há LOD de IA nem particionamento espacial. Aleatoriedade de criaturas tem seed. Percepção/discovery são por distância, sem linha de visão/cone ou memória sofisticada; o bloqueio geométrico da câmera de observação não muda essa regra.
 
 Colisão é planar por círculos de troncos/rochas mais limite circular; terreno e natação superficial controlam Y. Água funda só existe dentro do disco visível. Navegação local tem repulsão de obstáculos, não navmesh. Pet distante pode recuperar posição em terra livre; STAY não recupera automaticamente. A caça é uma abstração leve, com fuga/reposicionamento da presa. Não simula ecologia completa.
 
 Confiança cresce com presença calma até 68, cai com corrida/ameaça. Oferta só é consumida após observação de três segundos, confiança ≥58, distância <2,4 m e ausência de ameaça; um frutiluz conclui vínculo. Isso elimina spam e perda dos poucos frutos disponíveis. Comandos FOLLOW/STAY/PROTECT/RETURN são aplicados diretamente, inclusive com pausa aberta; proteção exige proximidade real. Domesticação assistida por outro pet permanece futura.
+
+`catalog/discoveries.ts` compartilha `OBSERVATION_RULES`/`observationRange` entre simulação e feedback: menos de 5,5 m para terrestres, 18 m para águia (distância horizontal), sem correr e velocidade <1,2. `BOND_RULES` mantém confiança somente abaixo de 5,4 m. Enquadrar a 6–8 m orienta aproximar, sem prometer progresso parado fora do alcance. A simulação e os limiares anteriores foram preservados.
 
 ## Persistência e compatibilidade
 

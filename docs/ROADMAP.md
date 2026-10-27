@@ -1,13 +1,13 @@
 # Roadmap e rastreabilidade
 
-Continuação em 26/10/2026 sobre `main@d6daa63`, após o merge do PR #4, na branch `feat/progress-recovery-touch-zoom`. Os PRs #2 e #4 estão mesclados; `chatgpt`/PR #3 permanece preservado, sem merge. Seus requisitos de visão/PWA foram reconciliados manualmente com o runtime atual.
+Continuação em 27/10/2026 sobre `main@2cdacf7`, após o merge do PR #5, na branch `feat/fauna-art-camera-bond`. Os PRs #2, #4 e #5 estão mesclados; `chatgpt`/PR #3 permanece aberto, não mergeável e preservado. Seus 13 documentos já foram incorporados manualmente no PR #4. Esta rodada prioriza modelos dos animais, câmera e clareza do vínculo; [relatório/evidências](FAUNA_2026-10-27.md).
 
 | Marco | Implementado | Validação / restante |
 |---|---|---|
 | M1 Fundação | Vite, TypeScript, Babylon, CI | Scripts locais e CI do PR #4 passaram; validação da continuação registrada em TESTING |
-| M2 Controles | Teclado/mouse, ações, toque independente, câmera 1ª/3ª pessoa, pausa | Chromium desktop/toque; gamepad padrão básico sem teste físico; zoom por pinça implementado |
+| M2 Controles | Teclado/mouse, ações, toque independente, câmera 1ª/3ª pessoa, pausa, foco por Q/Observar | Chromium desktop/toque; gamepad padrão básico sem teste físico; zoom por pinça implementado |
 | M3 Mata | Relevo, lago, trilha, árvores/rochas, frutos, colisões circulares, limite visível | Navegação do MVP; câmera/colisão geométrica completa ainda parcial |
-| M4 Fauna | 11 atores, cinco perfis, estados diferenciados, seed, decisão a ~8 Hz | Sem cone/linha de visão, memória ou LOD distante; caça abstrata |
+| M4 Fauna | 11 atores, cinco modelos articulados v2, estados diferenciados, seed, decisão a ~8 Hz | Estúdio e cena real no Chromium; sem cone/linha de visão da IA, memória ou LOD distante; caça abstrata |
 | M5 Vínculo | Auryn, confiança, observação, oferta validada, FOLLOW/STAY/PROTECT/RETURN, recuperação | Regressões e percurso em navegador; proteção contextual simples |
 | M6 Diário/bolsa | Campos graduais, pesquisa, coleta/consumo e guia textual | Sem filtros, fotografias, rastros ou minimapa gráfico |
 | M7 Progresso | Save v1 validado, fila, backup no novo jogo, falhas visíveis, preferências separadas | Restauração atômica, exportação e conflito entre abas implementados; importação de arquivos futura |
@@ -47,7 +47,11 @@ M4/M5 já têm implementações no PR #4. Esses gates orientam aceitação e exp
 
 - [ ] Isolar percepção/navegação de `game/sim/simulation.ts`, cachear consultas por tick e introduzir LOD apenas após profiling.
 - [ ] Resolver rotas em torno do lago e obstáculos côncavos; reduzir reposicionamentos de presa/pet e melhorar leitura das transições.
-- [ ] Aperfeiçoar câmera contra copas/rochas por geometria e fontes de feedback de ameaça.
+- [x] Recuo de câmera contra volumes 3D de troncos/copas/rochas/terreno e extensão suavizada sem cortar obstáculos; regressões geométricas e Chromium.
+- [x] Cinco modelos originais com olhos, focinhos/bico, patas/garras, caudas/penas e poses por estado; comparação com a base e orçamento de meshes/triângulos.
+- [x] Q/Observar em PC/toque para enquadrar encontro e explicar alcance, calma, confiança e oferta real da Auryn.
+- [ ] Refinar contato das patas com o terreno, transições de repouso e LOD de modelos após profiling; câmera ainda usa volumes aproximados.
+- [ ] Melhorar sinais de ameaça e percepção visual da IA/diário sem confundir o foco da câmera com pesquisa automática.
 - [x] UI para recuperar/exportar backup e arbitragem de gravações entre abas desta versão.
 - [x] Zoom por pinça independente do joystick, retomada de arrasto e limpeza dos ponteiros.
 - [ ] Importação JSON com prévia/validação e confirmação, sem descartar slots existentes.

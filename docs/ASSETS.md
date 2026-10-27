@@ -2,7 +2,9 @@
 
 ## Origem dos assets
 
-- Mundo/personagens/criaturas: primitivas e geometria procedural locais em `src/game/render/`. Nenhum modelo/textura de terceiros foi baixado. São representações estilizadas provisórias do projeto.
+- Mundo/personagem: primitivas e geometria procedural locais em `src/game/render/`, ainda simplificadas. Nenhum modelo/textura de terceiros foi baixado.
+- Fauna v2 (27/10/2026): geometria original construída no código em `render/creatures/{sculpt,herbivores,canids,eagle}.ts`. Seções esculpidas, esferas reduzidas e peças mescladas por articulação, cores por vértice e luminosidade própria da Auryn. Capivara com focinho largo/orelhas altas; tapiti marrom com orelhas curtas; lobo cinzento com juba e cauda; águia-real marrom com nuca dourada, bico curvo e penas; Auryn verde-petróleo, creme e dourado com orelhas foliares/cauda luminosa. Não são modelos baixados, imagens geradas ou assets extraídos de outro jogo. Incorporados como código próprio do EcoWild, sem licença de terceiro adicional. Não houve mudança no licenciamento geral do repositório.
+- Capturas em `docs/evidence/2026-10-27-fauna/` foram produzidas no Chromium a partir do Babylon real. O estúdio tem luz e chão próprios para comparação; não representa a iluminação da mata. A captura landscape mostra a interface real. Não são concept arts nem renders de ferramenta externa.
 - Solo/placa: Canvas 2D/DynamicTexture gerados em `render/forest.ts`; fontes genéricas locais do sistema.
 - Áudio: vento sintetizado e osciladores em `audio/ambience.ts`, sem arquivos externos.
 - `public/icons/*.png`: marca geométrica original desta rodada, árvore verde com ponto dourado sobre fundo verde escuro; desenhada localmente com Pillow, sem fonte, imagem ou marca de terceiros. Tamanhos 192/512 e Apple 180; conteúdo central dentro da área segura do ícone maskable. Incorporada como asset próprio do projeto, sem restrição de terceiro.
