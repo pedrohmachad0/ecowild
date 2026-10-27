@@ -2,10 +2,10 @@ import { interactionTarget } from "./interaction.ts";
 import { decide } from "../ai/brain.ts";
 import { CONFIG } from "../config.ts";
 import { SPECIES_BY_ID } from "../data/species.ts";
-import { noteBehavior, noteInteraction, noteSight } from "../catalog/discoveries.ts";
+import { noteBehavior, noteInteraction, noteSight, OBSERVATION_RULES, observationRange } from "../catalog/discoveries.ts";
 import { basis, clamp, lerpAngle, mulberry32, resolveCircle } from "../math.ts";
 import { emptyDiscovery } from "../persistence/schema.ts";
-import { stepBond } from "../taming/bond.ts";
+import { BOND_RULES, stepBond } from "../taming/bond.ts";
 import type { AiState, DiscoveryFlags, PetCommand, SaveV1, SpeciesId } from "../types.ts";
 import { SPAWNS, obstacles, props as layoutProps } from "../world/layout.ts";
 import type { Obstacle, Prop } from "../world/layout.ts";
@@ -645,8 +645,8 @@ function updateBond(sim: Simulation, dt: number, offer: boolean): void {
     sprinting: sim.player.sprinting,
     moving,
     offer: offer && sim.inventory.glowfruit > 0,
-    observed: auryn.observe >= 3,
-    threatened: auryn.fear > 0.45,
+    observed: auryn.observe >= BOND_RULES.observation,
+    threatened: auryn.fear > BOND_RULES.fear,
     socialAssist: false,
     dt,
   });
@@ -740,9 +740,9 @@ function updateDiscoveries(sim: Simulation, dt: number): void {
     const profile = SPECIES_BY_ID[c.speciesId];
     const d = Math.hypot(c.x - sim.player.x, c.z - sim.player.z);
     if (d < profile.sight) mark(sim, c.speciesId, "seen");
-    if (d < (c.speciesId === "eagle" ? 18 : 5.5) && !sim.player.sprinting && sim.player.speed < 1.2) c.observe = Math.min(8, c.observe + dt);
+    if (d < observationRange(c.speciesId) && !sim.player.sprinting && sim.player.speed < OBSERVATION_RULES.maxSpeed) c.observe = Math.min(8, c.observe + dt);
     else c.observe = Math.max(0, c.observe - dt * 0.2);
-    if (c.observe > 3) mark(sim, c.speciesId, "behavior");
+    if (c.observe > OBSERVATION_RULES.seconds) mark(sim, c.speciesId, "behavior");
   }
 }
 
@@ -751,7 +751,7 @@ function makePrompt(sim: Simulation): string {
   if (target.kind === "collect") return target.prop.kind === "glow" ? "E · colher frutiluz" : "E · colher fruto";
   if (target.kind === "offer") {
     const c = target.creature;
-    return c.trust >= 58 && c.observe >= 3 && c.fear <= 0.45 && !sim.player.sprinting ? "E · oferecer frutiluz" : "Observe sem se mover. Espere confiança 58 e tranquilidade antes de oferecer.";
+    return c.trust >= BOND_RULES.trust && c.observe >= BOND_RULES.observation && c.fear <= BOND_RULES.fear && !sim.player.sprinting ? "E · oferecer frutiluz" : "Observe sem se mover. Espere confiança 58 e tranquilidade antes de oferecer.";
   }
   if (target.kind === "observe") return `E · observar ${SPECIES_BY_ID[target.creature.speciesId].name.toLowerCase()}`;
   if (target.kind === "drink") return "E · beber no lago";

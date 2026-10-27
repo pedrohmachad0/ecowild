@@ -36,6 +36,7 @@ on("#enter", "click", () => game.start("new"));
 on("#resume", "click", () => game.start("continue"));
 on("#manage-progress", "click", () => void progress.open());
 on("#camera", "click", () => game.setHold("camera", true));
+on("#observe", "click", () => game.toggleObservation());
 on("#retry", "click", () => location.reload());
 for (const id of ["catalog", "inventory", "map", "pause"] as const) on("#open-" + id, "click", () => game.open(id));
 on("#close-sheet", "click", () => game.open("none"));
@@ -72,6 +73,20 @@ function render(hud: HudSnapshot): void {
   vitals.textContent = hud.playing ? `Diário ${hud.discovered}/${hud.species} · Vida ${Math.round(hud.health)} · Energia ${Math.round(hud.energy)} · Sede ${Math.round(hud.thirst)}` : "";
   promptEl.hidden = !hud.prompt || !hud.playing;
   promptEl.textContent = coarse() ? hud.prompt.replace(/^E ·/, "Interagir ·") : hud.prompt;
+  const encounter = hud.encounter;
+  const observeButton = must<HTMLButtonElement>("#observe");
+  observeButton.hidden = !encounter;
+  observeButton.textContent = encounter?.focused ? "Voltar" : "Observar";
+  observeButton.setAttribute("aria-label", encounter?.focused ? "Encerrar observação" : "Observar animal próximo");
+  observeButton.setAttribute("aria-pressed", String(!!encounter?.focused));
+  const observing = hud.playing && hud.panel === "none" && !!encounter?.focused;
+  must("#field-note").hidden = !observing;
+  document.body.dataset.observing = String(observing);
+  if (encounter) {
+    must("#encounter-name").textContent = encounter.name;
+    must("#encounter-state").textContent = encounter.state;
+    must("#encounter-message").textContent = encounter.message;
+  }
   const notices = hud.playing && hud.panel === "none" ? hud.toasts.slice(-1) : [];
   if (toasts.textContent !== notices.join("")) toasts.replaceChildren(...notices.map(text => { const p = document.createElement("p"); p.textContent = text; return p; }));
   const open = hud.panel !== "none" && hud.playing;

@@ -1,0 +1,21 @@
+{
+  "recovery_ui": "Cancel preserves both slots; raw downloads; incompatible primary preserved in backup; Auryn/command/catalog/inventory restored after reload",
+  "storage": {
+    "race": [
+      "saved",
+      "conflict"
+    ],
+    "sticky": "conflict",
+    "aborted": "unavailable",
+    "rollback": true,
+    "restored": "saved",
+    "berries": 7,
+    "swapped": true
+  },
+  "invalid_backup_preserved": true,
+  "restore_unsaved_and_undo": "New unsaved session kept atomically; chosen backup restored; undo recovers 9 berries; Escape keeps pause",
+  "two_tabs": "Second stale runtime refuses save; session remains exportable; cancel/reload explicit",
+  "touch_zoom": "Three simultaneous fingers: joystick + pinch; no rotation during pinch; 2-to-1 drag without jump; cancellation releases joystick/camera",
+  "recovery_portrait": "Recovery dialog accessible at 390x844; touch targets at least 44 CSS px",
+  "pageerrors": []
+}

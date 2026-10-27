@@ -14,6 +14,7 @@ export type FrameInput = {
   interactEdge: boolean;
   useBerryEdge: boolean;
   cameraEdge: boolean;
+  observeEdge: boolean;
   pauseEdge: boolean;
   catalogEdge: boolean;
   inventoryEdge: boolean;
@@ -35,6 +36,7 @@ const GAME_KEYS = new Set([
   "ShiftRight",
   "KeyE",
   "KeyV",
+  "KeyQ",
   "KeyC",
   "KeyM",
   "KeyF",
@@ -47,7 +49,7 @@ const GAME_KEYS = new Set([
 ]);
 
 function emptyHold() {
-  return { jump: false, interact: false, sprint: false, camera: false, pause: false, catalog: false, inventory: false, map: false, berry: false };
+  return { jump: false, interact: false, sprint: false, camera: false, observe: false, pause: false, catalog: false, inventory: false, map: false, berry: false };
 }
 
 export class InputManager {
@@ -130,7 +132,7 @@ export class InputManager {
       lookPx: this.lookPx, lookPy: this.lookPy, lookStickX, lookStickY,
       sprint: axes.sprint || this.holds.sprint || pad.sprint, zoom: this.zoom,
       jumpEdge: edge("Space", "jump"), interactEdge: edge("KeyE", "interact"),
-      useBerryEdge: edge("KeyF", "berry"), cameraEdge: edge("KeyV", "camera"),
+      useBerryEdge: edge("KeyF", "berry"), cameraEdge: edge("KeyV", "camera"), observeEdge: edge("KeyQ", "observe"),
       pauseEdge: edge("Escape", "pause"), catalogEdge: edge("KeyC", "catalog"),
       inventoryEdge: edge("Tab", "inventory"), mapEdge: edge("KeyM", "map"),
       pet: this.petQueued ?? petFromKeyEdge(this.prevKeys, keys),
@@ -159,7 +161,7 @@ export class InputManager {
       e.preventDefault();
       if (!e.repeat && !this.keys.has(e.code)) {
         const actions: Record<string, keyof ReturnType<typeof emptyHold>> = {
-          Space: "jump", KeyE: "interact", KeyF: "berry", KeyV: "camera", Escape: "pause", KeyC: "catalog", Tab: "inventory", KeyM: "map",
+          Space: "jump", KeyE: "interact", KeyF: "berry", KeyV: "camera", KeyQ: "observe", Escape: "pause", KeyC: "catalog", Tab: "inventory", KeyM: "map",
         };
         const action = actions[e.code];
         if (action) this.holds[action] = true;

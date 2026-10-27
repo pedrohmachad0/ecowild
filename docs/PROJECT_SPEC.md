@@ -1,6 +1,6 @@
 # EcoWild — especificação de produto
 
-Este documento integra os requisitos completos do [PR #3](https://github.com/pedrohmachad0/ecowild/pull/3), de `chatgpt@a41adc7`, à base atual do PR #4. Define visão e critérios; o estado implementado está na [auditoria](AUDIT_2026-10-26.md) e no [roadmap](ROADMAP.md). Requisito escrito não significa recurso pronto.
+Este documento integra os requisitos completos do [PR #3](https://github.com/pedrohmachad0/ecowild/pull/3), de `chatgpt@a41adc7`, incorporados pelo PR #4 e preservados nas continuações. Define visão e critérios; o estado implementado está no [roadmap](ROADMAP.md), na [auditoria](AUDIT_2026-10-26.md) e no [relatório da fauna/câmera](FAUNA_2026-10-27.md). Requisito escrito não significa recurso pronto.
 
 ## Visão fundadora — preservar em todas as expansões
 
@@ -34,7 +34,7 @@ Esta visão **não significa que todos os sistemas já existam**. O MVP da Mata 
 
 ## Identidade e plataformas
 
-- Aventura/exploração 3D low-poly detalhada, vibrante e natural, com sobrevivência leve, observação, colecionáveis, progressão científica e fantasia original. Silhuetas, animações, água, iluminação e vegetação devem compor direção artística consistente; primitivas são apenas placeholders identificados.
+- Aventura/exploração 3D low-poly detalhada, vibrante e natural, com sobrevivência leve, observação, colecionáveis, progressão científica e fantasia original. Silhuetas, animações, água, iluminação e vegetação devem compor direção artística consistente. Geometria procedural original é uma opção válida: distinguir modelos trabalhados de placeholders ainda simplificados.
 - PC em navegadores modernos; Android em navegadores compatíveis; iPhone/iPad em Safari e navegadores compatíveis. **No celular, jogar em orientação horizontal (landscape)** com HUD e controles próprios. Single-player primeiro; não inviabilizar expansão multiplayer futura.
 - **Infraestrutura PWA obrigatória, instalação opcional para o jogador**: instalável onde houver suporte, ícones e manifest, `display: standalone` quando compatível, lançamento pela tela inicial, versão/cache controlados, aviso de atualização e estratégia offline progressiva. PWA não equivale a app nativo nem garante travamento de orientação no iOS.
 
@@ -77,8 +77,8 @@ No estado atual, fichas textuais graduais e save v1 já funcionam; imagens de fi
 
 - Uma floresta pequena navegável, lago, trilhas, árvores, rochas, limites visíveis e locais de observação. Cena imaginária com fauna de diferentes regiões; não apresentar coexistência de lobo-cinzento, águia-real e capivara como ecossistema brasileiro real.
 - Movimento responsivo, diagonal normalizada, corrida/energia, pulo, interação e colisões. Natação superficial já existe; mergulho e exploração aquática complexa são futuros.
-- Terceira pessoa padrão, primeira pessoa alternável, rotação, zoom desktop/touch e prevenção aproximada de obstrução da câmera. Câmera por geometria completa ainda pendente.
-- Capivara, coelho-tapiti, lobo-cinzento, águia-real e Auryn, com silhuetas e comportamentos distintos. Assets procedurais provisórios são aceitáveis, sem prometer modelos finais.
+- Terceira pessoa padrão, primeira pessoa alternável, rotação, zoom desktop/touch e recuo por volumes de troncos/copas/rochas e terreno. Q/Observar enquadra animal próximo já conhecido e mostra estado/requisitos do vínculo; mover encerra. Foco não pausa nem concede progresso. Câmera por geometria completa e percepção visual rigorosa ainda pendentes.
+- Capivara, coelho-tapiti, lobo-cinzento, águia-real e Auryn, com silhuetas, anatomia estilizada, paletas e comportamentos distintos. Modelos procedurais articulados v2 presentes; poses de descanso, alimentação/água, medo, caminhada e voo usam o estado real. Sem animação esquelética/IK, texturas externas ou promessa de modelos finais.
 - Loop: explorar → colher frutiluz → encontrar Auryn → observar parada → aproximar com calma → oferecer após confiança suficiente → vínculo → seguir/esperar/proteger/voltar → diário → salvar/continuar.
 - Diário com campos bloqueados até descoberta, observação e interação; bolsa com recursos utilizáveis, quantidades limitadas e feedback de coleta/uso. Guia textual pode orientar até haver minimapa real.
 - Save local versionado e validado, falhas visíveis, novo jogo confirmado e backup na substituição. Restauração confirmada, exportação JSON e proteção contra gravações de sessões desatualizadas. Importação de arquivos futura. Preferências separadas. Nenhuma conta ou serviço pago obrigatório.

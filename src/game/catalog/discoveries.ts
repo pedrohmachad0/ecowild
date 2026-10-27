@@ -2,6 +2,9 @@ import { SPECIES_BY_ID } from "../data/species.ts";
 import type { DiscoveryFlags, SpeciesId } from "../types.ts";
 import { emptyDiscovery } from "../persistence/schema.ts";
 
+export const OBSERVATION_RULES = { groundRange: 5.5, airRange: 18, seconds: 3, maxSpeed: 1.2 } as const;
+export const observationRange = (id: SpeciesId): number => id === "eagle" ? OBSERVATION_RULES.airRange : OBSERVATION_RULES.groundRange;
+
 export function noteSight(flags: DiscoveryFlags): DiscoveryFlags {
   if (flags.seen && flags.habitat) return flags;
   return { ...flags, seen: true, habitat: true };

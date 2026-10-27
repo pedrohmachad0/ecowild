@@ -108,3 +108,23 @@ h2 { font-size: 1.3rem; }
   #toasts { top: 68px; font-size: 12px; }
   #prompt { bottom: 122px; width: 60vw; font-size: 12px; }
 }
+
+#field-note {
+  position: fixed; z-index: 20; top: 78px; left: var(--safe-left);
+  width: min(220px, 29vw); padding: 10px 12px; border: 1px solid #b8d8bc88;
+  border-radius: 12px; background: #102c24ed; pointer-events: none;
+}
+#field-note strong, #field-note span { display: block; }
+#field-note strong { color: #f5df9d; font-size: 16px; }
+#field-note span { color: #bfd4bc; font-size: 12px; }
+#field-note p { margin: 6px 0; font-size: 13px; }
+#field-note small { font-size: 11px; color: #bfd4bc; }
+body[data-observing=true] #toasts { top: 218px; bottom: auto; left: var(--safe-left); transform: none; width: min(220px, 29vw); font-size: 11px; }
+@media (max-height: 430px) {
+  #field-note { top: 92px; padding: 8px 10px; }
+  #field-note small { display: none; }
+}
+@media (orientation: portrait) and (pointer: coarse) {
+  #field-note { top: 150px; width: 180px; }
+  body[data-observing=true] #toasts { top: 286px; width: 180px; }
+}

@@ -25,8 +25,8 @@ export type SpeciesProfile = {
   curiosity: string;
   fleeRadius: number;
   sight: number;
-  /** Procedural low-poly stand-in until a real glTF ships. Not a final asset. */
-  representation: "procedural-stylized-v1";
+  /** Original articulated, vertex-coloured geometry; no external model download. */
+  representation: "procedural-stylized-v2";
 };
 
 export const SPECIES: readonly SpeciesProfile[] = [
@@ -55,7 +55,7 @@ export const SPECIES: readonly SpeciesProfile[] = [
     curiosity: "Capivaras têm os olhos, as orelhas e as narinas no alto da cabeça, o que ajuda a observar e respirar com o corpo na água.",
     fleeRadius: 4.2,
     sight: 16,
-    representation: "procedural-stylized-v1",
+    representation: "procedural-stylized-v2",
   },
   {
     id: "rabbit",
@@ -82,7 +82,7 @@ export const SPECIES: readonly SpeciesProfile[] = [
     curiosity: "Não cava tocas fundas como o coelho europeu. Descansa em formas rasas no chão, escondidas na grama.",
     fleeRadius: 7.5,
     sight: 15,
-    representation: "procedural-stylized-v1",
+    representation: "procedural-stylized-v2",
   },
   {
     id: "wolf",
@@ -109,7 +109,7 @@ export const SPECIES: readonly SpeciesProfile[] = [
     curiosity: "Alcateias costumam ser grupos familiares. O lobo-cinzento não é nativo do Brasil: sua presença nesta mata faz parte do cenário imaginário.",
     fleeRadius: 5,
     sight: 18,
-    representation: "procedural-stylized-v1",
+    representation: "procedural-stylized-v2",
   },
   {
     id: "eagle",
@@ -136,7 +136,7 @@ export const SPECIES: readonly SpeciesProfile[] = [
     curiosity: "A águia-real ocorre no hemisfério norte e caça principalmente pequenos mamíferos. Esta mata reúne faunas de regiões diferentes; não representa um ecossistema brasileiro real.",
     fleeRadius: 0,
     sight: 32,
-    representation: "procedural-stylized-v1",
+    representation: "procedural-stylized-v2",
   },
   {
     id: "auryn",
@@ -163,7 +163,7 @@ export const SPECIES: readonly SpeciesProfile[] = [
     curiosity: "O pulso calmo não é um ataque. Ele faz predadores perderem o foco por um instante — o bastante para a presa sair do alcance.",
     fleeRadius: 6,
     sight: 18,
-    representation: "procedural-stylized-v1",
+    representation: "procedural-stylized-v2",
   },
 ];
 
