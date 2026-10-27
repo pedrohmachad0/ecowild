@@ -2,6 +2,9 @@ import { Engine, FreeCamera, Scene, Vector3 } from "@babylonjs/core";
 import { Ambience } from "./audio/ambience.ts";
 import { catalogView } from "./catalog/discoveries.ts";
 import { CONFIG } from "./config.ts";
+import { advanceBoom, clampCameraPitch, resolveBoom } from "./camera/boom.ts";
+import { createCameraVolumes } from "./camera/worldVolumes.ts";
+import { encounterNote, observationTarget, PORTRAIT_HEIGHT } from "./camera/observation.ts";
 import { InputManager } from "./input/InputManager.ts";
 import { basis, clamp } from "./math.ts";
 import { adaptTier, initialTier, scalingFor } from "./performance/quality.ts";
@@ -12,7 +15,7 @@ import type { Rig } from "./render/actors.ts";
 import { buildForest } from "./render/forest.ts";
 import type { Forest } from "./render/forest.ts";
 import { commandPet, createSim, petSnapshot, stepSim, toSave, trustSnapshot } from "./sim/simulation.ts";
-import type { Simulation } from "./sim/simulation.ts";
+import type { Simulation, SimCreature } from "./sim/simulation.ts";
 import type { CameraMode, PetCommand, QualityName, SaveV1 } from "./types.ts";
 import { heightAt } from "./world/terrain.ts";
 
@@ -46,7 +49,10 @@ export class EcoWildGame {
   private camPitch: number = CONFIG.camera.pitch;
   private camDist: number = CONFIG.camera.distance;
   private fov = 0.86;
-  private readonly camPos = new Vector3();
+  private readonly cameraVolumes = createCameraVolumes();
+  private boomDistance: number = CONFIG.camera.distance;
+  private focusId: string | null = null;
+  private previousView: { mode: CameraMode; yaw: number; pitch: number; distance: number } | null = null;
   private readonly lookAt = new Vector3();
   private quality: QualityName = "auto";
   private tier = initialTier(false, 4);
@@ -188,6 +194,32 @@ export class EcoWildGame {
     this.input.addLook(dx, dy);
   }
   addZoom(delta: number): void { this.input.addZoom(delta); }
+  private canObserve = (creature: SimCreature): boolean => {
+    if (!this.sim) return false;
+    const p = this.sim.player;
+    return !resolveBoom({ x: p.x, y: p.y + 1.5, z: p.z }, { x: creature.x, y: creature.y + PORTRAIT_HEIGHT[creature.speciesId], z: creature.z }, this.cameraVolumes, heightAt, 0.05).blocked;
+  };
+  toggleObservation(): void {
+    if (!this.sim || !this.playing || this.panel !== "none") return;
+    if (this.focusId) this.stopObservation();
+    else {
+      const creature = observationTarget(this.sim, null, this.canObserve);
+      if (!creature) return;
+      this.previousView = { mode: this.mode, yaw: this.camYaw, pitch: this.camPitch, distance: this.camDist };
+      this.focusId = creature.id;
+      this.mode = "third"; this.camYaw = creature.yaw + 2.5; this.camPitch = 0.22;
+      this.camDist = creature.speciesId === "rabbit" ? 2.1 : creature.speciesId === "eagle" ? 3.5 : 3;
+      this.boomDistance = this.camDist;
+    }
+    this.pushHud();
+  }
+  private stopObservation(): void {
+    if (this.previousView) {
+      this.mode = this.previousView.mode; this.camYaw = this.previousView.yaw;
+      this.camPitch = this.previousView.pitch; this.camDist = this.previousView.distance;
+    }
+    this.focusId = null; this.previousView = null; this.boomDistance = this.camDist;
+  }
   command(pet: PetCommand): void {
     if (this.sim && this.playing) { commandPet(this.sim, pet); this.pushHud(); void this.saveNow(true); }
   }
@@ -260,6 +292,7 @@ export class EcoWildGame {
         this.saveStatus = this.saveConflict ? "Outra aba alterou o progresso. Exporte esta sessão e recarregue antes de restaurar." : "Não foi possível restaurar. Os slots foram preservados; verifique o backup e tente novamente.";
         return false;
       }
+      this.stopObservation();
       this.pendingSave = result.data;
       this.loadStatus = "loaded";
       this.backupOnWrite = false;
@@ -345,7 +378,7 @@ export class EcoWildGame {
       stepSim(this.sim, { ...EMPTY_INPUT, camYaw: this.camYaw }, Math.min(dt, CONFIG.fixedDt));
     }
     this.updateCamera(input, dt, blocked);
-    this.syncActors();
+    this.syncActors(blocked ? 0 : dt);
     this.syncProps();
     if (this.forest) {
       this.forest.water.position.y = CONFIG.waterY + 0.04 + Math.sin(this.time * 1.4) * 0.03;
@@ -373,8 +406,12 @@ export class EcoWildGame {
     else if (input.catalogEdge) this.open(this.panel === "catalog" ? "none" : "catalog");
     else if (input.inventoryEdge) this.open(this.panel === "inventory" ? "none" : "inventory");
     else if (input.mapEdge) this.open(this.panel === "map" ? "none" : "map");
+    if (this.panel === "none" && this.focusId && (Math.hypot(input.moveX, input.moveZ) > 0.1 || input.jumpEdge)) this.stopObservation();
+    if (input.observeEdge && this.panel === "none") this.toggleObservation();
     if (input.cameraEdge && this.panel === "none") {
+      this.stopObservation();
       this.mode = this.mode === "third" ? "first" : "third";
+      this.camPitch = clampCameraPitch(this.camPitch, this.mode);
     }
   }
 
@@ -389,72 +426,40 @@ export class EcoWildGame {
       this.camera.setTarget(this.lookAt);
       return;
     }
+    const focused = this.focusId ? observationTarget(this.sim, this.focusId, this.canObserve) : null;
+    if (this.focusId && !focused) this.stopObservation();
     if (!blocked) {
       const lookX = input.lookPx + input.lookStickX * 140 * Math.max(dt, 0.016);
       const lookY = input.lookPy + input.lookStickY * 110 * Math.max(dt, 0.016);
       this.camYaw -= lookX * this.lookSens;
-      this.camPitch = clamp(this.camPitch + lookY * this.lookSens, this.mode === "first" ? -0.9 : 0.18, 1.15);
-      if (this.mode === "third") this.camDist = clamp(this.camDist + input.zoom * 0.008, CONFIG.camera.min, CONFIG.camera.max);
+      this.camPitch = clampCameraPitch(this.camPitch + lookY * this.lookSens, this.mode);
+      if (this.mode === "third") this.camDist = clamp(this.camDist + input.zoom * 0.008, focused ? 1.5 : CONFIG.camera.min, focused ? 7 : CONFIG.camera.max);
       else this.fov = clamp(this.fov + input.zoom * 0.0005, 0.6, 1.25);
     }
     const p = this.sim.player;
     const b = basis(this.camYaw);
-    const pivotY = p.y + (this.mode === "first" ? 1.55 : CONFIG.camera.eye);
-    let dist = this.mode === "first" ? 0.18 : this.camDist;
-    if (p.swimming && this.mode === "third") dist = Math.min(dist, 4.4);
-    const hdist = Math.cos(this.camPitch) * dist;
-    const vdist = Math.sin(this.camPitch) * dist;
-    let cx = p.x - b.fx * hdist;
-    let cz = p.z - b.fz * hdist;
-    let cy = pivotY + vdist;
-    if (this.mode === "third") {
-      const shorten = this.cameraClearance(p.x, p.z, cx, cz, hdist);
-      if (shorten < 1) {
-        cx = p.x + (cx - p.x) * shorten;
-        cz = p.z + (cz - p.z) * shorten;
-        cy = pivotY + vdist * shorten;
-      }
-    }
-    const k = 1 - Math.exp(-10 * dt);
-    this.camPos.copyFrom(this.camera.position);
-    this.camera.position.set(
-      this.camPos.x + (cx - this.camPos.x) * k,
-      this.camPos.y + (cy - this.camPos.y) * k,
-      this.camPos.z + (cz - this.camPos.z) * k,
-    );
-    this.camera.position.y = Math.max(this.camera.position.y, heightAt(this.camera.position.x, this.camera.position.z) + 0.25);
+    const pivot = focused
+      ? { x: focused.x, y: focused.y + PORTRAIT_HEIGHT[focused.speciesId], z: focused.z }
+      : { x: p.x, y: p.y + (this.mode === "first" ? 1.55 : CONFIG.camera.eye), z: p.z };
+    let dist = this.camDist;
+    if (p.swimming && !focused) dist = Math.min(dist, 4.4);
     if (this.mode === "first") {
-      this.camera.position.set(p.x, pivotY, p.z);
-      this.lookAt.set(p.x + b.fx * Math.cos(this.camPitch), pivotY - Math.sin(this.camPitch), p.z + b.fz * Math.cos(this.camPitch));
-    } else this.lookAt.set(p.x, pivotY, p.z);
-    this.camera.setTarget(this.lookAt);
-    this.camera.fov = this.mode === "first" ? this.fov : 0.9;
-    if (this.playerRig) this.playerRig.root.setEnabled(this.mode === "third");
-  }
-
-  private cameraClearance(px: number, pz: number, cx: number, cz: number, dist: number): number {
-    if (!this.sim || dist < 0.2) return 1;
-    let nearest = 1;
-    for (const o of this.sim.obstacles) {
-      const dx = cx - px;
-      const dz = cz - pz;
-      const fx = o.x - px;
-      const fz = o.z - pz;
-      const t = clamp((fx * dx + fz * dz) / (dist * dist || 1), 0, 1);
-      const qx = px + dx * t;
-      const qz = pz + dz * t;
-      const d = Math.hypot(o.x - qx, o.z - qz);
-      const pad = o.r + 0.35;
-      if (d < pad) {
-        const along = t * dist;
-        const safe = Math.max(0.4, along - pad);
-        nearest = Math.min(nearest, safe / dist);
-      }
+      this.camera.position.set(p.x, pivot.y, p.z);
+      this.lookAt.set(p.x + b.fx * Math.cos(this.camPitch), pivot.y - Math.sin(this.camPitch), p.z + b.fz * Math.cos(this.camPitch));
+    } else {
+      const horizontal = Math.cos(this.camPitch) * dist;
+      const desired = { x: pivot.x - b.fx * horizontal, y: pivot.y + Math.sin(this.camPitch) * dist, z: pivot.z - b.fz * horizontal };
+      const boom = advanceBoom(pivot, desired, this.boomDistance, dt, this.cameraVolumes, heightAt);
+      this.boomDistance = boom.distance;
+      this.camera.position.set(boom.position.x, boom.position.y, boom.position.z);
+      this.lookAt.set(pivot.x, pivot.y, pivot.z);
     }
-    return nearest;
+    this.camera.setTarget(this.lookAt);
+    this.camera.fov = this.mode === "first" ? this.fov : focused ? 0.72 : 0.9;
+    if (this.playerRig) this.playerRig.root.setEnabled(this.mode === "third" && !focused && this.boomDistance > 0.7);
   }
 
-  private syncActors(): void {
+  private syncActors(dt = 0): void {
     if (!this.sim || !this.playerRig) return;
     const shadows = this.forest?.shadows ?? null;
     if (shadows && shadows !== this.lastShadow) {
@@ -470,10 +475,9 @@ export class EcoWildGame {
     for (const c of this.sim.creatures) {
       const rig = this.rigs.get(c.id);
       if (!rig) continue;
-      const hop = c.speciesId === "rabbit" && c.moving ? Math.abs(Math.sin(c.phase * 1.4)) * 0.16 : 0;
-      rig.root.position.set(c.x, c.y + hop, c.z);
+      rig.root.position.set(c.x, c.y, c.z);
       rig.root.rotation.y = c.yaw + Math.PI;
-      animateRig(rig, c.phase, c.moving, this.time);
+      animateRig(rig, c.phase, c.moving, this.time, { state: c.state, fear: Math.max(c.fear, c.startled > 0 ? 0.8 : 0), trust: c.trust, tamed: c.tamed, dt });
 
     }
   }
@@ -515,7 +519,7 @@ export class EcoWildGame {
     const sim = this.sim;
     if (!sim) {
       return {
-        ready: false,
+        ready: false, encounter: null,
         lookSens: this.lookSens, deadzone: this.deadzone, saveStatus: this.saveStatus,
         playing: false,
         health: 100,
@@ -546,8 +550,9 @@ export class EcoWildGame {
       ? Math.round(this.fpsWindow.reduce((a, b) => a + b, 0) / this.fpsWindow.length)
       : 0;
     const catalog = catalogView(sim.discoveries);
+    const encountered = observationTarget(sim, this.focusId, this.canObserve);
     return {
-      ready: true,
+      ready: true, encounter: encountered ? encounterNote(sim, encountered, this.focusId !== null) : null,
       lookSens: this.lookSens, deadzone: this.deadzone, saveStatus: this.saveStatus,
       playing: this.playing,
       health: sim.player.health,
@@ -589,7 +594,7 @@ export class EcoWildGame {
   private exposeProbe(): void {
     window.__controlsTest = {
       getHud: () => this.snapshot(),
-      getCamera: () => ({ mode: this.mode, yaw: this.camYaw, distance: this.camDist, fov: this.fov }),
+      getCamera: () => ({ mode: this.mode, yaw: this.camYaw, distance: this.camDist, fov: this.fov, focus: this.focusId, position: this.camera ? { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z } : null, target: { x: this.lookAt.x, y: this.lookAt.y, z: this.lookAt.z } }),
       getSim: () => this.sim,
       getSceneCounts: () => ({ meshes: this.scene?.meshes.length, materials: this.scene?.materials.length }),
       getYaw: () => this.sim?.player.yaw ?? 0,
@@ -619,7 +624,7 @@ declare global {
   interface Window {
     __controlsTest?: {
       getHud: () => HudSnapshot;
-      getCamera: () => { mode: CameraMode; yaw: number; distance: number; fov: number };
+      getCamera: () => { mode: CameraMode; yaw: number; distance: number; fov: number; focus: string | null; position: { x: number; y: number; z: number } | null; target: { x: number; y: number; z: number } };
       getSim: () => Simulation | null;
       getSceneCounts: () => { meshes?: number; materials?: number };
       getYaw: () => number;
@@ -631,6 +636,7 @@ declare global {
 }
 
 export type HudSnapshot = {
+  encounter: ReturnType<typeof encounterNote> | null;
   ready: boolean;
   lookSens: number;
   deadzone: number;
