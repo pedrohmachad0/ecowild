@@ -18,7 +18,9 @@ with sync_playwright() as p:
     page.goto('http://127.0.0.1:4173'); page.locator('#enter').click(timeout=90000)
     page.wait_for_function('window.__controlsTest.getHud().playing')
     hud = lambda: page.evaluate('window.__controlsTest.getHud()')
-    tp = lambda x, z: page.evaluate("""async([x,z])=>{const {heightAt}=await import('/src/game/world/terrain.ts');const s=window.__controlsTest.getSim();s.player.x=x;s.player.z=z;s.player.y=heightAt(x,z);}""", [x, z])
+    # Read world data through the dev probe, never by importing modules: after HMR a
+    # direct import can load a second, empty copy of the region registry.
+    tp = lambda x, z: page.evaluate("([x,z])=>window.__controlsTest.teleport(x,z)", [x, z])
     counts0 = page.evaluate('window.__controlsTest.getSceneCounts()')
 
     # Every registered species has a diary entry; the HUD clock starts in the morning.
@@ -27,13 +29,11 @@ with sync_playwright() as p:
     results['species'] = hud()['species']
 
     # Egg: real E presses at the nest and at the warmed nest in the camp.
-    page.evaluate("async()=>{const {NESTS}=await import('/src/game/world/layout.ts');window.__nest=NESTS[0];}")
-    nest = page.evaluate('window.__nest')
+    nest = page.evaluate('window.__controlsTest.getPlaces().nest')
     tp(nest['x'], nest['z'] + 1); page.wait_for_function("window.__controlsTest.getHud().prompt.includes('ovo')")
     page.keyboard.press('e'); page.wait_for_function('window.__controlsTest.getHud().inventory.eggs===1')
-    page.evaluate("async()=>{const {CAMP}=await import('/src/game/world/layout.ts');window.__camp=CAMP;}")
-    camp = page.evaluate('window.__camp')
-    tp(camp['incubator']['x'] + 1, camp['incubator']['z']); page.wait_for_function("window.__controlsTest.getHud().prompt.includes('ninho aquecido')")
+    incubator = page.evaluate('window.__controlsTest.getPlaces().incubator')
+    tp(incubator['x'] + 1, incubator['z']); page.wait_for_function("window.__controlsTest.getHud().prompt.includes('ninho aquecido')")
     page.keyboard.press('e'); page.wait_for_function('window.__controlsTest.getHud().incubator!==null')
     assert page.locator('#egg-chip').is_visible()
     # Fixture: fast-forward warming instead of waiting 150+ s of software rendering.
@@ -91,8 +91,7 @@ with sync_playwright() as p:
     assert has_model, 'hatchling has no rendered model after reload'
     results['reload'] = 'Hatchling (with its own model), photo and challenges restored from the IndexedDB save'
     # Travel: walk to the east exit, press E, save in the Vereda, reload and resume there.
-    page.evaluate("async()=>{const {region}=await import('/src/game/world/region.ts');window.__exit=region().exits[0];}")
-    exit_ = page.evaluate('window.__exit')
+    exit_ = page.evaluate("window.__controlsTest.getExits().find(e=>e.to==='vereda')")
     tp(exit_['x'] - 1, exit_['z']); page.wait_for_function("window.__controlsTest.getHud().prompt.includes('Trilha')")
     page.keyboard.press('e'); page.wait_for_function("window.__controlsTest.getHud().place.id==='vereda'", timeout=30000)
     page.wait_for_timeout(1500)

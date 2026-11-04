@@ -12,7 +12,7 @@ Continuação em 27/10/2026 sobre `main@2cdacf7`, após o merge do PR #5, na bra
 | M6 Diário/bolsa | Campos graduais, pesquisa, filtros, coleta/consumo, guia com mapa gráfico | Sem fotografias ou minimapa fixo no HUD; rastro só via Auryn |
 | M7 Progresso | Save v1 validado, fila, backup no novo jogo, falhas visíveis, preferências separadas | Restauração atômica, exportação, importação JSON com prévia e conflito entre abas implementados |
 | M8 PWA/mobile | Manifest/ícones, shell offline, atualização consentida, base relativa | Chromium emulado; instalação/standalone e desempenho físico pendentes |
-| M9 Expansão | Registro de regiões, viagem, **Vereda do Cerrado** (tamanduá, seriema, lobo-guará, brasalume), **Baía do Pantanal** (jacaré, tuiuiú, capivara e lambari multirregião), ovos (fantasia), fotos, 19 desafios, dia/noite | Três biomas; sem mergulho, cavernas, montarias ou genética. Guia em [EXPANDIR](EXPANDIR.md) |
+| M9 Expansão | Registro de regiões, viagem, **Vereda do Cerrado** (tamanduá, seriema, lobo-guará, brasalume), **Baía do Pantanal** (jacaré, tuiuiú, capivara e lambari multirregião), **Gruta** (morcego, grilo-de-caverna, bagre-cego), modelos GLB opcionais, ovos (fantasia), fotos, 22 desafios, dia/noite | Quatro regiões; sem mergulho, cavernas, montarias ou genética. Guia em [EXPANDIR](EXPANDIR.md) |
 
 ## Marcos oficiais do Prompt Mestre
 
@@ -36,7 +36,7 @@ M4/M5 já têm implementações no PR #4. Esses gates orientam aceitação e exp
 
 ## Próximas expansões sugeridas
 
-Seguir [EXPANDIR](EXPANDIR.md). Feito: Vereda do Cerrado e Baía do Pantanal. Candidatos seguintes coerentes com a visão: manguezal ou rio (exploração aquática), caverna (subterrâneo, morcegos), serra/campo rupestre (relevo e altitude), cheia e seca sazonais no Pantanal. Cada região nova passa pelo contrato de `tests/regions.test.ts`.
+Seguir [EXPANDIR](EXPANDIR.md). Feito: Vereda do Cerrado, Baía do Pantanal e Gruta. Candidatos seguintes coerentes com a visão: manguezal ou rio (exploração aquática, mergulho), serra/campo rupestre (relevo e altitude), cheia e seca sazonais no Pantanal, Mata Atlântica (arborícolas). Modelos de destaque podem vir de GLB com licença verificada (ADR-048). Cada região nova passa pelo contrato de `tests/regions.test.ts`.
 
 ## Próximas tarefas pequenas
 
@@ -71,13 +71,13 @@ Seguir [EXPANDIR](EXPANDIR.md). Feito: Vereda do Cerrado e Baía do Pantanal. Ca
 | Pilar | Primeiro marco verificável | Recorte atual | Futuro |
 |---|---|---|---|
 | Biologia/geografia/relevos | M3 | Mata imaginária e Vereda do Cerrado (buritis, cupinzeiros, lobeiras), ligadas por trilha; ciclo de dia e noite | Biomas/climas/altitude/ecologia mais ricos |
-| Fauna real e fantástica | M4 | Mamíferos, ave, réptil (teiú), anfíbio (sapo-cururu), peixe (lambari), Auryn e musgarim; aquático, subterrâneo e arborícola | Invertebrados, mais espécies por bioma |
+| Fauna real e fantástica | M4 | 19 espécies: mamíferos, aves, répteis, anfíbio, peixes, invertebrado (grilo-de-caverna) e três criaturas de fantasia; aquático, voador, subterrâneo e arborícola | Mais espécies por bioma |
 | Catálogo e colecionáveis | M6 | Avistamento com linha de visão, habitat, observação, interação, fotos e 12 desafios | Rastros físicos e coleções por bioma |
 | Pets exóticos | M5 | Auryn e musgarim; vários companheiros com nome e nível | Mais espécies e habilidades por pet |
 | Selvagens e defesa | M5 | Lobos ameaçam/atacam com aviso visível; Auryn próxima protege ou acalma | Táticas e prioridades mais ricas |
 | Domesticação assistida | M5 | **Implementada**: musgarim (pulso calmo da Auryn) e brasalume (luz de um musgarim, à noite) | Mais combinações pet → espécie |
 | Ovos para certos pets | M9 | **Implementado** para o musgarim (fantasia): ninho → bolsa → ninho aquecido → filhote | Outras espécies de fantasia ovíparas |
-| Exploração especial | M3: navegação; expansão posterior | Caminhar e natação superficial | Aquática, aérea, cavernas e subterrâneo |
+| Exploração especial | M3: navegação; expansão posterior | Caminhar, natação superficial e caverna escura (Gruta) com lanterna | Mergulho, exploração aérea e túneis |
 
 Não marcar um pilar inteiro como concluído porque um tipo ou um texto existe. PWA é requisito de plataforma, não substitui a identidade do jogo. Multiplayer, genética, economia, construção e montarias ficam depois do MVP sólido.
 

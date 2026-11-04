@@ -5,7 +5,7 @@ import type { SpeciesId } from "../types.ts";
  * here; simulation, rendering, minimap, save and camera read everything from the
  * active region. Only one region is loaded at a time (the player travels between them).
  */
-export type RegionId = "mata" | "vereda" | "pantanal";
+export type RegionId = "mata" | "vereda" | "pantanal" | "gruta";
 
 export type TreeKind = "broadleaf" | "buriti" | "twisted" | "caranda";
 export type PropKind = "glow" | "berry" | "egg" | "wolfapple";
@@ -45,10 +45,14 @@ export type RegionDef = {
   /** Respawn point after fainting; also where born creatures settle. */
   camp: { x: number; z: number; incubator: { x: number; z: number } | null; tent: { x: number; z: number } | null };
   territory: Circle | null;
-  perch: { x: number; z: number } | null;
+  /** Where flyers rest outside their activity window; height is above the ground there. */
+  perch: { x: number; z: number; height?: number } | null;
   nests: readonly { id: string; x: number; z: number }[];
   burrows: readonly { id: string; x: number; z: number }[];
-  eagleCircuit: { x: number; z: number; rx: number; rz: number } | null;
+  /** Flight loop for flying species while active; y is the cruise height above ground. */
+  eagleCircuit: { x: number; z: number; rx: number; rz: number; y?: number } | null;
+  /** Enclosed regions (caves): a ceiling, walls and constant dim light regardless of the hour. */
+  enclosed?: { ceiling: number; light: number };
   exits: readonly RegionExit[];
   sign: { x: number; z: number; text: string };
   palette: RegionPalette;

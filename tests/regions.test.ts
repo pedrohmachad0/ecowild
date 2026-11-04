@@ -183,3 +183,38 @@ describe('Baía do Pantanal', () => {
     expect(Math.hypot(caiman.x - water.x, caiman.z - water.z)).toBeLessThan(before);
   });
 });
+
+describe('Gruta da Vereda', () => {
+  const toCave = () => { const sim = createSim(null); travel(sim, 'to-vereda'); travel(sim, 'to-gruta'); return sim; };
+  test('ambiente fechado: luz constante e lanterna obrigatória', () => {
+    const sim = toCave();
+    expect(region().enclosed).toMatchObject({ ceiling: 9 });
+    expect(new Set(sim.creatures.map(c => SPECIES_BY_ID[c.speciesId].group))).toContain('invertebrate');
+  });
+  test('morcegos dormem no teto de dia, ao alcance do Observar, e voam à noite', async () => {
+    const { observationTarget } = await import('../src/game/camera/observation');
+    const sim = toCave();
+    const bats = sim.creatures.filter(c => c.speciesId === 'bat');
+    sim.creatures = bats;
+    advance(sim, 4);
+    for (const bat of bats) expect(bat.state).toBe('REST');
+    const perch = region().perch!;
+    sim.player.x = perch.x + 1; sim.player.z = perch.z + 1; sim.player.y = heightAt(sim.player.x, sim.player.z);
+    sim.discoveries.bat = { seen: true, habitat: true, behavior: false, interacted: false };
+    expect(observationTarget(sim, null, () => true)?.speciesId).toBe('bat');
+    sim.time = DAY_LENGTH * 0.62;
+    advance(sim, 2);
+    expect(bats.some(b => b.state !== 'REST' && b.moving)).toBe(true);
+  });
+  test('o diário registra grilo e bagre-cego no escuro só de perto', () => {
+    const sim = toCave();
+    const cricket = sim.creatures.find(c => c.speciesId === 'cavecricket')!;
+    sim.creatures = [cricket]; sim.obstacles = [];
+    sim.player.x = cricket.x + 6; sim.player.z = cricket.z;
+    advance(sim, 1);
+    expect(sim.discoveries.cavecricket?.seen ?? false).toBe(false);
+    sim.player.x = cricket.x + 2.5;
+    advance(sim, 1);
+    expect(sim.discoveries.cavecricket?.seen).toBe(true);
+  });
+});

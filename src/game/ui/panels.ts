@@ -37,7 +37,7 @@ function diaryTabs(tab: DiaryTab, hud: HudSnapshot): string {
 
 function catalogHtml(hud: HudSnapshot, filter: CatalogFilter, group: BioGroup | "all", place: string): string {
   const filters: [CatalogFilter, string][] = [["all", "Todas"], ["known", "Registradas"], ["pending", "Pesquisa pendente"]];
-  const groups: (BioGroup | "all")[] = ["all", "mammal", "bird", "reptile", "amphibian", "fish", "fantasy"];
+  const groups: (BioGroup | "all")[] = ["all", "mammal", "bird", "reptile", "amphibian", "fish", "invertebrate", "fantasy"];
   const list = hud.catalog
     .filter(item => filter === "all" || (filter === "known" ? item.known : item.progress < 100))
     .filter(item => group === "all" || item.group === group)

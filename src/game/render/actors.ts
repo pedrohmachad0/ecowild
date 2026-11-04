@@ -15,6 +15,7 @@ import { buildEagle } from "./creatures/eagle.ts";
 import { buildArmadillo, buildFish, buildMosslight, buildTegu, buildToad } from "./creatures/smallfauna.ts";
 import { buildAnteater, buildBrasalume, buildManedWolf, buildSeriema } from "./creatures/cerrado.ts";
 import { buildCaiman, buildJabiru } from "./creatures/pantanal.ts";
+import { buildBat, buildCaveCricket, buildCaveFish } from "./creatures/cave.ts";
 export type { Rig } from "./rig.ts";
 export { animateRig } from "./creatures/animate.ts";
 
@@ -68,6 +69,7 @@ export function buildCreature(scene: Scene, id: string, species: SpeciesId): Rig
     armadillo: buildArmadillo, toad: buildToad, fish: buildFish, tegu: buildTegu, mosslight: buildMosslight,
     anteater: buildAnteater, seriema: buildSeriema, manedwolf: buildManedWolf, brasalume: buildBrasalume,
     caiman: buildCaiman, jabiru: buildJabiru,
+    bat: buildBat, cavecricket: buildCaveCricket, cavefish: buildCaveFish,
   };
   const rig = builders[species](scene, id);
   // Hatchlings are visibly young.

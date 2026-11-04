@@ -8,6 +8,7 @@
 - Fauna da expansão (04/11/2026): tatu-galinha, sapo-cururu, lambari, teiú e musgarim em `render/creatures/smallfauna.ts`, geometria original com o mesmo `Sculpt`, sem downloads. Acampamento, ninhos, tocas e vaga-lumes são primitivas locais em `render/forest.ts`. Fotos do diário são capturas do próprio canvas do jogo no navegador do jogador.
 - Expansão Vereda do Cerrado: tamanduá-bandeira, seriema, lobo-guará e brasalume em `render/creatures/cerrado.ts`; buritis, árvores tortas, cupinzeiros e lobeiras em `render/forest.ts`. Tudo geometria original, sem downloads.
 - Expansão Baía do Pantanal: jacaré e tuiuiú em `render/creatures/pantanal.ts`; carandá em `world/treeShapes.ts`. Geometria original, sem downloads.
+- Expansão Gruta: morcego, grilo-de-caverna e bagre-cego em `render/creatures/cave.ts`; teto, paredes e estalactites em `render/forest.ts`. Geometria original.
 - Solo/placa: Canvas 2D/DynamicTexture gerados em `render/forest.ts`; fontes genéricas locais do sistema.
 - Áudio: vento sintetizado e osciladores em `audio/ambience.ts`, sem arquivos externos.
 - `public/icons/*.png`: marca geométrica original desta rodada, árvore verde com ponto dourado sobre fundo verde escuro; desenhada localmente com Pillow, sem fonte, imagem ou marca de terceiros. Tamanhos 192/512 e Apple 180; conteúdo central dentro da área segura do ícone maskable. Incorporada como asset próprio do projeto, sem restrição de terceiro.
@@ -33,6 +34,9 @@ As espécies do mapa não compartilham necessariamente a mesma distribuição na
 - Lobo-guará (*Chrysocyon brachyurus*): [Animal Diversity Web](https://animaldiversity.org/accounts/Chrysocyon_brachyurus/) — gênero próprio, onívoro com grande parte de frutos (lobeira, *Solanum lycocarpum*), dispersor de sementes, tímido.
 - Jacaré-do-pantanal (*Caiman yacare*): [Animal Diversity Web](https://animaldiversity.org/accounts/Caiman_yacare/) — termorregulação ao sol, determinação do sexo pela temperatura do ninho, cuidado parental.
 - Tuiuiú (*Jabiru mycteria*): [Animal Diversity Web](https://animaldiversity.org/accounts/Jabiru_mycteria/) — grande cegonha das Américas, ave-símbolo do Pantanal, ninhos no alto de árvores.
+- Morcego-de-cauda-curta (*Carollia perspicillata*): [Animal Diversity Web](https://animaldiversity.org/accounts/Carollia_perspicillata/) — frugívoro, abriga-se em cavernas, dispersor de sementes (pimenteiras).
+- Grilo-de-caverna (*Endecous* sp.): gênero de grilos (Phalangopsidae) comum em cavernas brasileiras; o diário registra só o gênero. Revisar com fonte bioespeleológica antes de material didático.
+- Bagre-cego (*Trichomycterus itacarambiensis*): bagre troglóbio de cavernas de Itacarambi (MG), despigmentado e com olhos reduzidos. Revisar status de conservação e distribuição com fonte ictiológica atual antes de material didático.
 - Águia-real (*Aquila chrysaetos*): [Animal Diversity Web](https://animaldiversity.org/accounts/Aquila_chrysaetos/) — hemisfério norte e predação de pequenos mamíferos.
 
 Estas são referências editoriais, não fontes de assets. Não apresentamos as frases como citações literais. Auryn, musgarim, brasalume, frutiluz, ovos de musgarim e pulso calmo são fantasia original. O ato de beber no lago é uma abstração de jogo, não uma recomendação de beber água sem tratamento na natureza.

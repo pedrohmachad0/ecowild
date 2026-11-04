@@ -65,6 +65,7 @@ export const VEREDA: RegionDef = {
   exits: [
     { id: "to-mata", x: -30.5, z: 1, to: "mata", arrive: { x: 28, z: -1.5, yaw: Math.PI / 2 }, label: "Trilha da Mata (oeste)" },
     { id: "to-pantanal", x: 4, z: -30.5, to: "pantanal", arrive: { x: 0, z: 27, yaw: 0 }, label: "Trilha do Pantanal (norte)" },
+    { id: "to-gruta", x: 30.5, z: -2, to: "gruta", arrive: { x: -26, z: 0, yaw: -Math.PI / 2 }, label: "Entrada da gruta (leste)" },
   ],
   sign: { x: -24.5, z: -1.2, text: "Vereda do Cerrado" },
   palette: {
@@ -78,7 +79,8 @@ export const VEREDA: RegionDef = {
     { x: -25, z: 7.5, text: "Posto" },
     { x: -27, z: -2.5, text: "← Mata" },
     { x: 4, z: -27.5, text: "↑ Pantanal" },
+    { x: 27, z: -5, text: "Gruta →" },
   ],
   highlights: [{ x: -12, z: -14, r: 5 }],
-  guide: "Da entrada, a oeste, a trilha atravessa o campo até a vereda de buritis em volta da nascente. Tamanduás procuram cupinzeiros; seriemas correm no capim; o lobo-guará visita as lobeiras ao norte no entardecer. Brasalumes dormem nos cupinzeiros e só confiam em quem anda com a luz de um musgarim. A trilha a oeste volta à Mata; a do norte desce ao Pantanal.",
+  guide: "Da entrada, a oeste, a trilha atravessa o campo até a vereda de buritis em volta da nascente. Tamanduás procuram cupinzeiros; seriemas correm no capim; o lobo-guará visita as lobeiras ao norte no entardecer. Brasalumes dormem nos cupinzeiros e só confiam em quem anda com a luz de um musgarim. A trilha a oeste volta à Mata; a do norte desce ao Pantanal; a leste, uma fenda leva à gruta.",
 };

@@ -13,7 +13,7 @@ export type Challenge = {
 
 const seen = (sim: Simulation, id: SpeciesId) => !!sim.discoveries[id]?.seen;
 const count = (values: boolean[]): number => values.filter(Boolean).length;
-const GROUPS: BioGroup[] = ["mammal", "bird", "reptile", "amphibian", "fish", "fantasy"];
+const GROUPS: BioGroup[] = ["mammal", "bird", "reptile", "amphibian", "fish", "invertebrate", "fantasy"];
 
 /** Scientific challenges: each one teaches something about the Mata and none requires combat. */
 export const CHALLENGES: readonly Challenge[] = [
@@ -35,7 +35,7 @@ export const CHALLENGES: readonly Challenge[] = [
     progress: sim => [[...sim.creatures, ...sim.away].some(c => c.speciesId === "mosslight" && c.tamed && !c.born) ? 1 : 0, 1] },
   { id: "moss-nest", title: "Ninho de musgo", description: "Leve um ovo de musgarim ao ninho aquecido do acampamento e espere chocar.",
     progress: sim => [[...sim.creatures, ...sim.away].some(c => c.born) ? 1 : 0, 1] },
-  { id: "groups", title: "Árvore da vida", description: "Registre um mamífero, uma ave, um réptil, um anfíbio, um peixe e uma criatura fantástica.",
+  { id: "groups", title: "Árvore da vida", description: "Registre um mamífero, uma ave, um réptil, um anfíbio, um peixe, um invertebrado e uma criatura fantástica.",
     progress: sim => [count(GROUPS.map(g => SPECIES.some(s => s.group === g && seen(sim, s.id)))), GROUPS.length] },
   { id: "album", title: "Álbum de campo", description: "Fotografe seis espécies diferentes.",
     progress: sim => [Math.min(6, Object.keys(sim.photos).length), 6] },
@@ -53,6 +53,12 @@ export const CHALLENGES: readonly Challenge[] = [
     progress: sim => [sim.photos.caiman?.state === "REST" ? 1 : 0, 1] },
   { id: "jabiru", title: "Ave-símbolo", description: "Registre o comportamento do tuiuiú sem espantá-lo.",
     progress: sim => [sim.discoveries.jabiru?.behavior ? 1 : 0, 1] },
+  { id: "underground", title: "Descida ao escuro", description: "Da Vereda, siga a trilha do leste até a Gruta.",
+    progress: sim => [sim.visited.includes("gruta") ? 1 : 0, 1] },
+  { id: "roost", title: "Colônia no teto", description: "Fotografe os morcegos dormindo pendurados durante o dia.",
+    progress: sim => [sim.photos.bat?.state === "REST" ? 1 : 0, 1] },
+  { id: "troglobite", title: "Vida sem luz", description: "Registre o bagre-cego e o grilo-de-caverna, adaptados ao escuro.",
+    progress: sim => [count([seen(sim, "cavefish"), seen(sim, "cavecricket")]), 2] },
   { id: "encyclopedia", title: "Enciclopédia da mata", description: "Complete 100% da pesquisa de todas as espécies.",
     progress: sim => [count(SPECIES.map(s => { const f = sim.discoveries[s.id]; return !!(f?.seen && f.habitat && f.behavior && f.interacted); })), SPECIES.length] },
 ];

@@ -1,6 +1,6 @@
 # EcoWild
 
-Jogo web 3D de exploração, biologia e fantasia de Pedro Henrique Machado dos Santos. O jogo tem três regiões ligadas por trilhas: a **Mata da Nascente**, a **Vereda do Cerrado** e a **Baía do Pantanal**. São dezesseis espécies (mamíferos, ave, réptil, anfíbio, peixe e duas criaturas fantásticas), 22 animais com IA, ciclo de dia e noite, coleta, diário com fotos e desafios científicos, vínculo com a **Auryn**, domesticação assistida do **musgarim**, ovos chocados no acampamento, vários companheiros e progresso local. Single-player, sem conta ou telemetria.
+Jogo web 3D de exploração, biologia e fantasia de Pedro Henrique Machado dos Santos. O jogo tem quatro regiões ligadas por trilhas: a **Mata da Nascente**, a **Vereda do Cerrado**, a **Baía do Pantanal** e a **Gruta da Vereda**. São dezenove espécies (mamíferos, ave, réptil, anfíbio, peixe e duas criaturas fantásticas), 22 animais com IA, ciclo de dia e noite, coleta, diário com fotos e desafios científicos, vínculo com a **Auryn**, domesticação assistida do **musgarim**, ovos chocados no acampamento, vários companheiros e progresso local. Single-player, sem conta ou telemetria.
 
 Os cinco animais agora têm modelos próprios mais detalhados, olhos, patas, caudas/penas e poses de comportamento. Veja [a comparação visual e a validação da fauna](docs/FAUNA_2026-10-27.md). **Observar** aproxima a câmera de um animal conhecido e mostra seu estado e o próximo passo para criar vínculo com Auryn.
 
@@ -43,7 +43,9 @@ Siga a trilha desde a clareira, ao sul, até o lago ao norte e depois ao bosque 
 
 **Baía do Pantanal.** Ao norte da Vereda, uma baía rasa com palmeiras carandá e capões de mata. Jacarés-do-pantanal tomam sol nas margens e mergulham quando se assustam; tuiuiús pescam na beira; capivaras e lambaris também vivem aqui, como na Mata.
 
-**Diário.** Abas Fichas e Desafios (19 desafios científicos, nenhum exige combate), filtros por pesquisa, grupo biológico e região, e fotos tiradas em Observar.
+**Gruta da Vereda.** A leste da Vereda, uma fenda leva a um salão escuro: só a lanterna e a claridade da entrada iluminam. Morcegos-de-cauda-curta dormem pendurados no teto de dia e voam perto da entrada à noite; grilos-de-caverna (o primeiro invertebrado do diário) andam entre as estalagmites; o bagre-cego vive no poço subterrâneo.
+
+**Diário.** Abas Fichas e Desafios (22 desafios científicos, nenhum exige combate), filtros por pesquisa, grupo biológico e região, e fotos tiradas em Observar.
 
 Todos os painéis pausam a simulação. Comandos escolhidos na pausa são registrados imediatamente e executados ao retornar. Proteção afasta lobos próximos da companheira; não funciona à distância. Voltar faz a Auryn correr até você e depois seguir. Com a Auryn a menos de 6 m, **Farejar** marca no guia a espécie com pesquisa pendente mais próxima e **Pulso calmo** acalma animais a 9 m por 8 s (presas não fogem, lobos perdem o foco); elas ajudam a aproximar, não domesticam outras espécies. O guia (M) tem um mapa gráfico com lago, trilha, território dos lobos, frutos e animais já registrados; não há minimapa fixo no HUD. Lobos que defendem o território perto de você acendem o aviso “Lobo rosnando”. Há natação superficial simplificada no lago, sem mergulho. Qualidade, sensibilidade e zona morta estão em Pausa e persistem separadas do progresso. Gamepad padrão possui mapeamento básico; não há validação física de controle.
 
@@ -60,7 +62,7 @@ A câmera de observação permite girar e aproximar, mas a simulação continua:
 
 ## Evidências e limites
 
-Para criar regiões e espécies novas, siga [EXPANDIR](docs/EXPANDIR.md). Veja [expansão: dia/noite, novas espécies, ovos e desafios](docs/EXPANSAO_2026-11-04.md), [revisão de interface e habilidades da companheira](docs/UI_2026-11-04.md), [continuação e testes de recuperação/zoom](docs/FOLLOWUP_2026-10-26.md), [auditoria e validação](docs/AUDIT_2026-10-26.md), [arquitetura](docs/ARCHITECTURE.md), [roadmap](docs/ROADMAP.md) e [roteiros reproduzíveis](docs/TESTING.md). Emulação Chromium é separada de teste físico: **iPhone/Safari, Android/Chrome e instalação pelo sistema operacional ainda precisam de validação real**. 30 FPS mobile e 60 FPS PC são metas, não garantias.
+Para criar regiões e espécies novas, ou usar modelos 3D externos (GLB, por exemplo gerados no Higgsfield), siga [EXPANDIR](docs/EXPANDIR.md). Veja [expansão: dia/noite, novas espécies, ovos e desafios](docs/EXPANSAO_2026-11-04.md), [revisão de interface e habilidades da companheira](docs/UI_2026-11-04.md), [continuação e testes de recuperação/zoom](docs/FOLLOWUP_2026-10-26.md), [auditoria e validação](docs/AUDIT_2026-10-26.md), [arquitetura](docs/ARCHITECTURE.md), [roadmap](docs/ROADMAP.md) e [roteiros reproduzíveis](docs/TESTING.md). Emulação Chromium é separada de teste físico: **iPhone/Safari, Android/Chrome e instalação pelo sistema operacional ainda precisam de validação real**. 30 FPS mobile e 60 FPS PC são metas, não garantias.
 
 A mata é um ambiente imaginário que reúne fauna de regiões diferentes. Auryn e frutiluz são fantasia explícita; lobos-cinzentos e águias-reais não são nativos do Brasil. Os animais usam geometria estilizada original e animações por articulações, ainda sem rig esquelético/IK ou LOD. Mundo, jogador e sons continuam procedurais; fontes das informações e origem dos assets estão em [ASSETS.md](docs/ASSETS.md).
 

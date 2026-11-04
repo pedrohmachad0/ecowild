@@ -631,7 +631,7 @@ function updateCreature(sim: Simulation, c: SimCreature, dt: number, light: numb
   if (profile.traits.basks && c.state === "IDLE" && light > 0.5) c.state = "REST";
 
   if (profile.traits.flies) {
-    updateEagle(sim, c, dt, prey, light);
+    updateFlyer(sim, c, dt, prey, dayF);
     return;
   }
   if (profile.traits.aquatic) {
@@ -817,13 +817,22 @@ function updateFish(sim: Simulation, c: SimCreature, dt: number, playerDist: num
   c.y = CONFIG.waterY - 0.32 + Math.sin(c.phase * 0.7) * 0.04;
 }
 
-function updateEagle(sim: Simulation, c: SimCreature, dt: number, prey: { c: SimCreature; d: number } | null, light: number): void {
-  // Diurnal: at night the eagle roosts on its perch tree.
-  const perch = region().perch ?? region().camp;
-  const circuit = region().eagleCircuit ?? { x: region().water.x, z: region().water.z, rx: 12, rz: 10 };
-  if (light < 0.15) {
-    const perchY = heightAt(perch.x, perch.z) + 6.1;
-    const dx = perch.x - c.x, dz = perch.z - c.z, dy = perchY - c.y, d = Math.hypot(dx, dz, dy);
+/**
+ * Flying species circle the region's flight loop while active and rest on the perch
+ * outside their activity window: the eagle roosts at night, bats hang by day.
+ */
+function updateFlyer(sim: Simulation, c: SimCreature, dt: number, prey: { c: SimCreature; d: number } | null, dayF: number): void {
+  const profile = SPECIES_BY_ID[c.speciesId];
+  const def = region();
+  const perch = def.perch ?? { x: def.camp.x, z: def.camp.z };
+  const circuit = def.eagleCircuit ?? { x: def.water.x, z: def.water.z, rx: 12, rz: 10 };
+  const cruise = circuit.y ?? 8.6;
+  // Each individual keeps its own spot on the perch and its own place in the loop.
+  const seed = c.id.split("").reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  if (!isActive(profile.activeAt, dayF)) {
+    const ox = ((seed % 5) - 2) * 0.45, oz = ((seed % 3) - 1) * 0.45;
+    const perchY = heightAt(perch.x, perch.z) + (perch.height ?? 6.1);
+    const dx = perch.x + ox - c.x, dz = perch.z + oz - c.z, dy = perchY - c.y, d = Math.hypot(dx, dz, dy);
     if (d > 0.2) {
       const step = Math.min(d, 7 * dt);
       c.x += dx / d * step; c.z += dz / d * step; c.y += dy / d * step;
@@ -832,24 +841,27 @@ function updateEagle(sim: Simulation, c: SimCreature, dt: number, prey: { c: Sim
     c.dip = 0;
     return;
   }
-  c.fly += dt * 0.42;
-  const hungryDive = c.state === "CHASE" && prey && prey.d < 12;
+  c.fly += dt * (profile.speed > 8 ? 0.42 : 0.9);
+  const hunter = profile.diet === "carnivore";
+  const hungryDive = hunter && c.state === "CHASE" && prey && prey.d < 12;
   c.dip = clamp(c.dip + dt * (hungryDive ? 0.7 : -0.8), 0, 1);
-  const tx = circuit.x + Math.cos(c.fly) * circuit.rx, tz = circuit.z + Math.sin(c.fly) * circuit.rz, ty = 8.6 + Math.sin(c.fly * 2) * 0.8 - c.dip * 5.8;
+  const lane = 1 - (seed % 4) * 0.12;
+  const tx = circuit.x + Math.cos(c.fly) * circuit.rx * lane, tz = circuit.z + Math.sin(c.fly) * circuit.rz * lane;
+  const ty = cruise + Math.sin(c.fly * 2) * 0.8 - c.dip * (cruise - 2.8);
   // Ease back into the circuit after roosting instead of teleporting.
   const blend = Math.hypot(tx - c.x, tz - c.z, ty - c.y) > 1 ? 1 - Math.exp(-2.5 * dt) : 1;
   c.x += (tx - c.x) * blend; c.z += (tz - c.z) * blend; c.y += (ty - c.y) * blend;
   c.yaw = c.fly + Math.PI / 2;
   c.moving = true;
   if (c.state === "REST" || c.state === "RETURN_HOME") c.state = "WANDER";
-  if (prey && c.dip > 0.82 && c.attackCd <= 0) {
+  if (hunter && prey && c.dip > 0.82 && c.attackCd <= 0) {
     c.hunger = 0.2;
     c.attackCd = 6;
     c.dip = 0;
     prey.c.fear = 1;
     prey.c.x = prey.c.homeX;
     prey.c.z = prey.c.homeZ;
-    toast(sim, "dive", "A águia mergulhou e o coelho se espalhou pela clareira.", 7);
+    toast(sim, "dive", `${profile.name} mergulhou e o ${SPECIES_BY_ID[prey.c.speciesId].name.toLowerCase()} se espalhou pela clareira.`, 7);
   }
 }
 
@@ -1016,7 +1028,7 @@ function interact(sim: Simulation): SimCreature | null {
     toast(sim, "note-" + target.creature.id, `${SPECIES_BY_ID[target.creature.speciesId].name}: encontro registrado no diário.`, 2);
   } else if (target.kind === "drink") {
     sim.player.thirst = 0;
-    toast(sim, "drink", "Sede recuperada no lago do jogo. Na natureza, água sem tratamento pode causar doenças.", 2);
+    toast(sim, "drink", "Sede recuperada. Na natureza, água sem tratamento pode causar doenças.", 2);
   }
   return null;
 }
@@ -1066,7 +1078,7 @@ function makePrompt(sim: Simulation): string {
     return c.trust >= BOND_RULES.trust && c.observe >= BOND_RULES.observation && c.fear <= BOND_RULES.fear && !sim.player.sprinting ? "E · oferecer frutiluz" : "Observe sem se mover. Espere confiança 58 e tranquilidade antes de oferecer.";
   }
   if (target.kind === "observe") return `E · anotar encontro: ${SPECIES_BY_ID[target.creature.speciesId].name}`;
-  if (target.kind === "drink") return "E · beber no lago";
+  if (target.kind === "drink") return "E · beber água";
   if (target.kind === "warming") return `Ovo aquecendo no ninho: ${Math.floor((sim.incubator?.progress ?? 0) * 100)}%`;
   const trust = trustSnapshot(sim);
   if (trust?.near && trust.speciesId === "auryn") return sim.player.sprinting ? "Devagar. Correr desfaz a confiança da Auryn." : `Confiança ${Math.round(trust.value)}. Observe parada; a Auryn se aproxima com confiança.`;
@@ -1155,7 +1167,8 @@ function trackTarget(sim: Simulation): { x: number; z: number; label: string } |
 export function stepSim(sim: Simulation, input: SimInput, dt: number): void {
   if (dt <= 0) return;
   const dayF = dayFraction(sim.time);
-  const light = daylight(dayF);
+  // Caves keep the same dim light all day; outside, light follows the sun.
+  const light = region().enclosed?.light ?? daylight(dayF);
   updatePlayer(sim, input, dt);
   for (const c of sim.creatures) updateCreature(sim, c, dt, light, dayF);
   updateWorld(sim, input, dt, light);

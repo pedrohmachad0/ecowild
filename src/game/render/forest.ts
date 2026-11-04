@@ -202,7 +202,8 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   }
   const rockMesh = merge(rockParts, rockMat, "rocks");
   // Termite mounds (cupinzeiros): tall clay cones that block movement and sight.
-  const moundMat = mat(scene, "termite-mound", "#a8683e");
+  // Termite mounds outside; limestone stalagmites in caves.
+  const moundMat = mat(scene, "termite-mound", def.enclosed ? "#8a8276" : "#a8683e");
   const moundParts: Mesh[] = [];
   for (const m of moundList()) {
     const hgt = moundHeight(m.r);
@@ -357,7 +358,28 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   board.isPickable = false;
 
   let grass: Mesh | null = null;
-  if (scene.getEngine().getCaps().instancedArrays) {
+  // Caves: walls, ceiling and stalactites. No grass grows in the dark.
+  if (def.enclosed) {
+    const rockShell = mat(scene, "cave-shell", "#4a443c", "#060505");
+    rockShell.backFaceCulling = false;
+    const top = def.enclosed.ceiling;
+    const ceiling = MeshBuilder.CreateDisc("cave-ceiling", { radius: CONFIG.worldRadius + 3, tessellation: 48 }, scene);
+    ceiling.rotation.x = Math.PI / 2; ceiling.position.y = top; ceiling.material = rockShell; ceiling.isPickable = false;
+    const wall = MeshBuilder.CreateCylinder("cave-wall", { height: top + 4, diameter: (CONFIG.worldRadius + 2.5) * 2, tessellation: 48, cap: Mesh.NO_CAP }, scene);
+    wall.position.y = top / 2 - 1; wall.material = rockShell; wall.isPickable = false;
+    const drips: Mesh[] = [];
+    const crand = mulberry32(53);
+    for (let i = 0; i < 46; i++) {
+      const a = crand() * Math.PI * 2, r = 3 + crand() * (CONFIG.worldRadius - 4), len = 0.8 + crand() * 2.2;
+      const cone = MeshBuilder.CreateCylinder("stalactite", { height: len, diameterTop: 0.5 + crand() * 0.5, diameterBottom: 0, tessellation: 6 }, scene);
+      cone.position.set(Math.cos(a) * r, top - len / 2, Math.sin(a) * r);
+      drips.push(cone);
+    }
+    merge(drips, mat(scene, "stalactite", "#7a7268"), "stalactites");
+    ceiling.freezeWorldMatrix(); wall.freezeWorldMatrix(); rockShell.freeze();
+  }
+
+  if (!def.enclosed && scene.getEngine().getCaps().instancedArrays) {
     grass = MeshBuilder.CreateCylinder("grass", { height: 0.42, diameterTop: 0, diameterBottom: 0.07, tessellation: 3 }, scene);
     const gmat = mat(scene, "grass", def.palette.grass);
     grass.material = gmat;
@@ -395,6 +417,9 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   sun.position = new Vector3(20, 30, -10);
 
   // Lights for night play exist from the start so frozen materials compile with them.
+  // In a cave the sun is off; a pale light comes in through the entrance instead.
+  const entranceLight = def.enclosed ? new PointLight("entrance-light", new Vector3(def.spawn.x - 2, heightAt(def.spawn.x, def.spawn.z) + 4, def.spawn.z), scene) : null;
+  if (entranceLight) { entranceLight.diffuse = new Color3(0.75, 0.85, 1); entranceLight.specular = Color3.Black(); entranceLight.range = 16; sun.setEnabled(false); }
   const lantern = new PointLight("lantern", new Vector3(0, 2, 18), scene);
   lantern.diffuse = new Color3(1, 0.82, 0.55); lantern.specular = Color3.Black(); lantern.range = 11; lantern.intensity = 0;
   const campLight = new PointLight("camp-light", new Vector3(CAMP.x + 0.6, heightAt(CAMP.x, CAMP.z) + 1, CAMP.z - 1.6), scene);
@@ -420,6 +445,18 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   const dayHemi = new Color3(0.85, 0.92, 0.95), nightHemi = new Color3(0.32, 0.4, 0.62);
   const tmp = new Color3();
   const setTime = (dayF: number, player: { x: number; y: number; z: number }, time: number) => {
+    if (def.enclosed) {
+      // Constant darkness: dim cool ambient, the explorer's lantern and the entrance glow.
+      const outside = daylight(dayF);
+      hemi.intensity = 0.22; hemi.diffuse.set(0.55, 0.6, 0.7); hemi.groundColor.set(0.45, 0.42, 0.38);
+      scene.clearColor.set(0.02, 0.02, 0.025, 1); scene.fogColor.set(0.03, 0.03, 0.035);
+      lantern.position.set(player.x, player.y + 2.1, player.z); lantern.intensity = 1.15;
+      if (entranceLight) entranceLight.intensity = 0.15 + 0.95 * outside;
+      campLight.intensity = 0.5 + Math.sin(time * 9) * 0.06;
+      flame.scaling.y = 1 + Math.sin(time * 11) * 0.12;
+      fireflies.setEnabled(false);
+      return;
+    }
     const light = daylight(dayF), period = dayPeriod(dayF);
     const angle = (dayF - 0.25) * Math.PI * 2;
     sun.direction.set(-Math.cos(angle) * 0.6, -Math.max(0.25, Math.sin(angle)), 0.3);
@@ -472,8 +509,8 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
       grass.thinInstanceCount = count;
       grass.setEnabled(count > 0);
     }
-    scene.fogDensity = next === "low" ? 0.022 : 0.016;
-    if (next === "high") {
+    scene.fogDensity = def.enclosed ? 0.03 : next === "low" ? 0.022 : 0.016;
+    if (next === "high" && !def.enclosed) {
       if (!forest.shadows) {
         const shadows = new ShadowGenerator(1024, sun);
         shadows.usePercentageCloserFiltering = true;

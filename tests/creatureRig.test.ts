@@ -23,7 +23,8 @@ describe("modelos articulados da fauna", () => {
           triangles += mesh.getTotalIndices() / 3;
         }
         expect(triangles).toBeLessThan(8000);
-        if (id !== "eagle" && id !== "fish") { expect(low).toBeGreaterThan(-.03); expect(low).toBeLessThan(.05); }
+        const t = SPECIES.find(sp => sp.id === id)!.traits;
+        if (!t.flies && !t.aquatic) { expect(low).toBeGreaterThan(-.03); expect(low).toBeLessThan(.05); }
       }
       const before = scene.materials.length;
       for (const id of species) buildCreature(scene, `${id}-second`, id);

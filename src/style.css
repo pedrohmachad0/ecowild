@@ -324,3 +324,4 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
 @media (max-height: 430px) { #ability-row { bottom: calc(var(--safe-bottom) + 114px); } }
 .mm-key-wolfapple { background: #9fc25a; }
 @media (max-height: 430px) { .chip-region { display: none; } }
+.mm-ground.mm-gruta { fill: #3e3a35; } .mm-ground.mm-pantanal { fill: #3f6b3f; }

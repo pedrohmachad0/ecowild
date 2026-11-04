@@ -571,6 +571,9 @@ export class EcoWildGame {
       const boom = advanceBoom(pivot, desired, this.boomDistance, dt, this.cameraVolumes, heightAt);
       this.boomDistance = boom.distance;
       this.camera.position.set(boom.position.x, boom.position.y, boom.position.z);
+      // Caves: keep the camera under the ceiling.
+      const ceiling = region().enclosed?.ceiling;
+      if (ceiling !== undefined && this.camera.position.y > ceiling - 0.6) this.camera.position.y = ceiling - 0.6;
       // Never let the camera sit on its own target: that degenerates the view matrix.
       if (Math.hypot(boom.position.x - pivot.x, boom.position.y - pivot.y, boom.position.z - pivot.z) < 0.25) {
         this.camera.position.set(pivot.x - b.fx * 0.35, pivot.y + 0.45, pivot.z - b.fz * 0.35);
@@ -760,6 +763,9 @@ export class EcoWildGame {
       getSpeed: () => this.sim?.player.speed ?? 0,
       setKeys: (codes: string[]) => this.input.setKeys(codes),
       getPos: () => ({ x: this.sim?.player.x ?? 0, z: this.sim?.player.z ?? 0 }),
+      getExits: () => region().exits.map(e => ({ id: e.id, x: e.x, z: e.z, to: e.to })),
+      getPlaces: () => ({ nest: region().nests[0] ?? null, incubator: region().camp.incubator }),
+      teleport: (x: number, z: number) => { if (this.sim) { this.sim.player.x = x; this.sim.player.z = z; this.sim.player.y = heightAt(x, z); this.sim.player.vy = 0; } },
       // QA only: dress every rig of a kind with a fixture GLB served by Vite dev.
       dressFixture: async (key: ModelKey, url: string, asset: ModelAsset) => {
         if (!this.scene) return 0;
@@ -805,6 +811,9 @@ declare global {
       setKeys: (codes: string[]) => void;
       getPos: () => { x: number; z: number };
       dressFixture: (key: ModelKey, url: string, asset: ModelAsset) => Promise<number>;
+      getExits: () => { id: string; x: number; z: number; to: string }[];
+      getPlaces: () => { nest: { x: number; z: number } | null; incubator: { x: number; z: number } | null };
+      teleport: (x: number, z: number) => void;
     };
   }
 }

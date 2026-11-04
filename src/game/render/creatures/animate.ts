@@ -23,6 +23,14 @@ export function animateRig(rig: Rig, phase: number, moving: boolean, time: numbe
   const body = rig.body, active = moving ? 1 - r : 0;
   const breathing = Math.sin(time * 2.1 + phase * 0.05);
   body.scaling.y = 1 + breathing * 0.009;
+  if (rig.species === "bat") {
+    // Bats hang upside down with folded wings at rest and flap fast in flight.
+    if (state === "REST") {
+      body.rotation.z = Math.PI;
+      rig.wings.forEach((wing, i) => { wing.rotation.z += (i ? 1 : -1) * -1.2; });
+    } else rig.wings.forEach((wing, i) => { wing.rotation.z += (i ? 1 : -1) * Math.sin(time * 16) * 0.7; });
+    return;
+  }
   if (rig.species === "eagle") {
     const chasing = state === "CHASE";
     // Long glides interrupted by short wing beats, not perpetual frantic flapping.
@@ -34,7 +42,7 @@ export function animateRig(rig: Rig, phase: number, moving: boolean, time: numbe
     if (rig.head) rig.head.rotation.y += Math.sin(time * .8) * .08;
     return;
   }
-  if (rig.species === "fish") {
+  if (rig.species === "fish" || rig.species === "cavefish") {
     const speed = moving ? (state === "FLEE" ? 2.4 : 1) : 0.35;
     if (rig.tail) rig.tail.rotation.y += Math.sin(time * 9 * speed + phase) * 0.45 * speed;
     body.rotation.y = Math.sin(time * 9 * speed + phase + 1.2) * 0.08 * speed;

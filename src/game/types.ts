@@ -16,7 +16,10 @@ export type SpeciesId =
   | "manedwolf"
   | "brasalume"
   | "caiman"
-  | "jabiru";
+  | "jabiru"
+  | "bat"
+  | "cavecricket"
+  | "cavefish";
 
 export type AiState =
   | "IDLE"
