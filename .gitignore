@@ -6,3 +6,4 @@ coverage/
 !.env.example
 
 __pycache__/
+.scratch/

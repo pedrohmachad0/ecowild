@@ -22,6 +22,8 @@ export type FrameInput = {
   mapEdge: boolean;
   pet: PetCommand | null;
   ability: PetAbility | null;
+  shoutEdge: boolean;
+  photoEdge: boolean;
 };
 
 const GAME_KEYS = new Set([
@@ -50,13 +52,15 @@ const GAME_KEYS = new Set([
   "Digit4",
   "Digit5",
   "Digit6",
+  "KeyG",
+  "KeyP",
 ]);
 
 /** Panel toggles that also close their own panel while gameplay input is off. */
 const PANEL_KEYS = new Set(["Escape", "KeyC", "KeyM"]);
 
 function emptyHold() {
-  return { jump: false, interact: false, sprint: false, camera: false, observe: false, pause: false, catalog: false, inventory: false, map: false, berry: false };
+  return { jump: false, interact: false, sprint: false, camera: false, observe: false, pause: false, catalog: false, inventory: false, map: false, berry: false, shout: false, photo: false };
 }
 
 export class InputManager {
@@ -145,6 +149,7 @@ export class InputManager {
       inventoryEdge: edge("Tab", "inventory"), mapEdge: edge("KeyM", "map"),
       pet: this.petQueued ?? petFromKeyEdge(this.prevKeys, keys),
       ability: this.abilityQueued,
+      shoutEdge: edge("KeyG", "shout"), photoEdge: edge("KeyP", "photo"),
     };
     this.prevKeys = new Set(keys);
     this.prevPad = pad;
@@ -170,7 +175,7 @@ export class InputManager {
       e.preventDefault();
       if (!e.repeat && !this.keys.has(e.code)) {
         const actions: Record<string, keyof ReturnType<typeof emptyHold>> = {
-          Space: "jump", KeyE: "interact", KeyF: "berry", KeyV: "camera", KeyQ: "observe", Escape: "pause", KeyC: "catalog", Tab: "inventory", KeyM: "map",
+          Space: "jump", KeyE: "interact", KeyF: "berry", KeyV: "camera", KeyQ: "observe", Escape: "pause", KeyC: "catalog", Tab: "inventory", KeyM: "map", KeyG: "shout", KeyP: "photo",
         };
         const action = actions[e.code];
         if (action) this.holds[action] = true;

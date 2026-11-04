@@ -1,11 +1,31 @@
-import type { DiscoveryFlags, PetCommand, QualityName, SaveV1, SpeciesId } from "../types.ts";
+import type { AiState, DiscoveryFlags, PetCommand, QualityName, SaveData, SavedPet, SavedPhoto, SpeciesId } from "../types.ts";
 
-import { SPECIES as PROFILES } from "../data/species.ts";
+import { SPECIES as PROFILES, SPECIES_BY_ID } from "../data/species.ts";
 import { SPAWNS, props } from "../world/layout.ts";
+import { CHALLENGES } from "../progression/challenges.ts";
+
+export const SAVE_VERSION = 2;
 const SPECIES = PROFILES.map((s) => s.id);
-const CREATURES = [...SPAWNS.capybara, ...SPAWNS.rabbit, ...SPAWNS.wolf, SPAWNS.eagle, SPAWNS.auryn];
+const SPAWN_CREATURES: { id: string; speciesId: SpeciesId }[] = [
+  ...SPAWNS.capybara.map(s => ({ id: s.id, speciesId: "capybara" as const })),
+  ...SPAWNS.rabbit.map(s => ({ id: s.id, speciesId: "rabbit" as const })),
+  ...SPAWNS.wolf.map(s => ({ id: s.id, speciesId: "wolf" as const })),
+  { id: SPAWNS.eagle.id, speciesId: "eagle" },
+  { id: SPAWNS.auryn.id, speciesId: "auryn" },
+  ...SPAWNS.armadillo.map(s => ({ id: s.id, speciesId: "armadillo" as const })),
+  ...SPAWNS.toad.map(s => ({ id: s.id, speciesId: "toad" as const })),
+  ...SPAWNS.fish.map(s => ({ id: s.id, speciesId: "fish" as const })),
+  ...SPAWNS.tegu.map(s => ({ id: s.id, speciesId: "tegu" as const })),
+  ...SPAWNS.mosslight.map(s => ({ id: s.id, speciesId: "mosslight" as const })),
+];
+const SPAWN_SPECIES = new Map(SPAWN_CREATURES.map(c => [c.id, c.speciesId]));
 const COMMANDS: readonly PetCommand[] = ["FOLLOW", "STAY", "RETURN", "PROTECT"];
 const QUALITIES: readonly QualityName[] = ["low", "medium", "high", "auto"];
+const STATES: readonly AiState[] = ["IDLE", "WANDER", "SEARCH_FOOD", "EAT", "DRINK", "REST", "FLEE", "CHASE", "DEFEND", "FOLLOW_OWNER", "PROTECT_OWNER", "RETURN_HOME"];
+/** Only creatures that can be born in play may appear without a spawn entry. */
+const BORN_ID = /^hatch-\d{1,4}$/;
+const MAX_BORN = 8;
+const PHOTO_LIMIT = 40_000;
 
 function num(v: unknown, fallback: number, min: number, max: number): number {
   if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
@@ -30,56 +50,94 @@ export function emptyDiscovery(): DiscoveryFlags {
   return { seen: false, habitat: false, behavior: false, interacted: false };
 }
 
-/** v1 is the only released schema. Unknown versions are preserved, never downgraded. */
-export function migrateSave(raw: unknown): SaveV1 | null {
+function petName(raw: unknown, fallback: string): string {
+  return typeof raw === "string" ? raw.slice(0, 16).trim() || fallback : fallback;
+}
+
+/**
+ * Validates and normalizes a stored save into the current schema (v2).
+ * v1 (the first released format) is migrated in memory; unknown versions are
+ * rejected so the caller can preserve them untouched.
+ */
+export function migrateSave(raw: unknown): SaveData | null {
   if (!isRecord(raw)) return null;
   const version = raw.version;
-  if (version !== 1) return null;
+  if (version !== 1 && version !== 2) return null;
   if (!isRecord(raw.player)) return null;
   const p = raw.player;
   if (![p.x, p.y, p.z].every((v) => typeof v === "number" && Number.isFinite(v))) return null;
   if (!isRecord(raw.inventory) || !isRecord(raw.discoveries) || !isRecord(raw.creatures)) return null;
-  const inv = isRecord(raw.inventory) ? raw.inventory : {};
+  if (version === 2 && !Array.isArray(raw.pets)) return null;
+  const inv = raw.inventory;
   const settings = isRecord(raw.settings) ? raw.settings : {};
-  const quality = QUALITIES.includes(settings.quality as QualityName)
-    ? (settings.quality as QualityName)
-    : "auto";
-  const discoveries: SaveV1["discoveries"] = {};
-  if (isRecord(raw.discoveries)) {
-    for (const id of SPECIES) discoveries[id] = flags(raw.discoveries[id]);
+  const quality = QUALITIES.includes(settings.quality as QualityName) ? (settings.quality as QualityName) : "auto";
+  const discoveries: SaveData["discoveries"] = {};
+  for (const id of SPECIES) discoveries[id] = flags(raw.discoveries[id]);
+
+  const creatures: SaveData["creatures"] = {};
+  const speciesOf = new Map(SPAWN_SPECIES);
+  let born = 0;
+  for (const [id, value] of Object.entries(raw.creatures)) {
+    if (!isRecord(value)) continue;
+    let speciesId = SPAWN_SPECIES.get(id);
+    const isBorn = !speciesId && version === 2 && BORN_ID.test(id) && SPECIES_BY_ID[value.speciesId as SpeciesId]?.reproduction === "fantasy-egg";
+    if (isBorn) { if (born >= MAX_BORN) continue; born++; speciesId = value.speciesId as SpeciesId; speciesOf.set(id, speciesId); }
+    if (!speciesId) continue;
+    creatures[id] = {
+      x: num(value.x, 0, -80, 80),
+      z: num(value.z, 0, -80, 80),
+      hunger: num(value.hunger, 0.4, 0, 1),
+      thirst: num(value.thirst, 0.3, 0, 1),
+      fear: num(value.fear, 0, 0, 1),
+      energy: num(value.energy, 0.8, 0, 1),
+      trust: num(value.trust, 0, 0, 100),
+      tamed: SPECIES_BY_ID[speciesId].domesticable && value.tamed === true,
+      ...(isBorn ? { speciesId } : {}),
+    };
   }
-  const creatures: SaveV1["creatures"] = {};
-  if (isRecord(raw.creatures)) {
-    for (const { id } of CREATURES) {
-      const value = raw.creatures[id];
-      if (!isRecord(value)) continue;
-      creatures[id] = {
-        x: num(value.x, 0, -80, 80),
-        z: num(value.z, 0, -80, 80),
-        hunger: num(value.hunger, 0.4, 0, 1),
-        thirst: num(value.thirst, 0.3, 0, 1),
-        fear: num(value.fear, 0, 0, 1),
-        energy: num(value.energy, 0.8, 0, 1),
-        trust: num(value.trust, 0, 0, 100),
-        tamed: id === SPAWNS.auryn.id && value.tamed === true,
-      };
-    }
-  }
+  for (const c of Object.values(creatures)) if (c.tamed) c.trust = 100;
+
   const picked: Record<string, boolean> = {};
   if (isRecord(raw.picked)) {
     for (const { id } of props()) if (raw.picked[id] === true) picked[id] = true;
   }
-  let pet: SaveV1["pet"] = null;
-  if (isRecord(raw.pet) && creatures[SPAWNS.auryn.id]?.tamed) {
-    const command = COMMANDS.includes(raw.pet.command as PetCommand)
-      ? (raw.pet.command as PetCommand)
-      : "FOLLOW";
-    const name = typeof raw.pet.name === "string" ? raw.pet.name.slice(0, 16) : "Auryn";
-    pet = { name: name.trim() || "Auryn", xp: num(raw.pet.xp, 0, 0, 9999), command };
+
+  // v1 had a single optional Auryn pet; v2 keeps one entry per tamed creature.
+  const rawPets: unknown[] = version === 1 ? (isRecord(raw.pet) ? [{ ...raw.pet, id: SPAWNS.auryn.id, speciesId: "auryn" }] : []) : raw.pets as unknown[];
+  const pets: SavedPet[] = [];
+  for (const entry of rawPets) {
+    if (!isRecord(entry) || typeof entry.id !== "string") continue;
+    const speciesId = speciesOf.get(entry.id);
+    if (!speciesId || !creatures[entry.id]?.tamed || pets.some(p => p.id === entry.id)) continue;
+    const fallback = SPECIES_BY_ID[speciesId].name;
+    pets.push({
+      id: entry.id, speciesId, name: petName(entry.name, fallback), xp: num(entry.xp, 0, 0, 99999),
+      command: COMMANDS.includes(entry.command as PetCommand) ? entry.command as PetCommand : "FOLLOW",
+    });
   }
-  if (creatures[SPAWNS.auryn.id]?.tamed) creatures[SPAWNS.auryn.id].trust = 100;
+  // A tamed creature without a pet entry still gets one, never a silent loss.
+  for (const [id, c] of Object.entries(creatures)) {
+    if (c.tamed && !pets.some(p => p.id === id)) {
+      const speciesId = speciesOf.get(id)!;
+      pets.push({ id, speciesId, name: SPECIES_BY_ID[speciesId].name, xp: 0, command: "FOLLOW" });
+    }
+  }
+
+  const photos: SaveData["photos"] = {};
+  if (version === 2 && isRecord(raw.photos)) {
+    for (const id of SPECIES) {
+      const photo = raw.photos[id];
+      if (!isRecord(photo) || typeof photo.image !== "string") continue;
+      if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photo.image) || photo.image.length > PHOTO_LIMIT) continue;
+      photos[id] = { image: photo.image, state: STATES.includes(photo.state as AiState) ? photo.state as AiState : "IDLE", seconds: num(photo.seconds, 0, 0, 1e7) } satisfies SavedPhoto;
+    }
+  }
+  const challenges: Record<string, boolean> = {};
+  if (version === 2 && isRecord(raw.challenges)) for (const c of CHALLENGES) if (raw.challenges[c.id] === true) challenges[c.id] = true;
+  const incubator = version === 2 && isRecord(raw.incubator) ? { progress: num(raw.incubator.progress, 0, 0, 0.999) } : null;
+
   return {
-    version: 1,
+    version: 2,
     player: {
       x: num(p.x, 0, -80, 80),
       y: num(p.y, 0, -10, 40),
@@ -92,11 +150,15 @@ export function migrateSave(raw: unknown): SaveV1 | null {
     inventory: {
       glowfruit: Math.round(num(inv.glowfruit, 0, 0, 20)),
       berries: Math.round(num(inv.berries, 0, 0, 20)),
+      eggs: Math.round(num(inv.eggs, 0, 0, 2)),
     },
     picked,
     discoveries,
-    pet,
+    pets,
     creatures,
+    incubator,
+    photos,
+    challenges,
     settings: { quality, lookSens: num(settings.lookSens, 0.0045, 0.001, 0.02) },
     seconds: num(raw.seconds, 0, 0, 1e7),
   };

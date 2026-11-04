@@ -72,3 +72,19 @@ ADR-031: **RETURN distinto de FOLLOW.** Voltar faz o pet correr a 1,5× até o j
 ADR-032: **Habilidades da companheira como assistência, não domesticação.** Farejar (TRACK) e Pulso calmo (USE_ABILITY) exigem Auryn vinculada a menos de 6 m e têm recarga; efeitos reais na simulação (marca no mapa, `calm` que suprime fuga de presas e foco de predadores). Não tornam outras espécies domesticáveis. Recargas, `calm` e rastro são estado de execução, fora do save v1, para não exigir novo schema.
 
 ADR-033: **Importação com prévia e backup atômico.** `parseImport` valida tamanho, JSON, versão e estrutura sem tocar no IndexedDB. Confirmar grava a sessão aberta e então importa com `write(data, true)`, que move o principal para o backup na mesma transação e respeita a revisão otimista (conflitos bloqueiam). Restaurar backup desfaz.
+
+## Expansão da Mata — 04/11/2026
+
+ADR-034: **Save v2 com migração do v1.** `pets[]` substitui `pet`; entram ovos, incubadora, fotos, desafios e criaturas nascidas (`speciesId` só para IDs `hatch-N` de espécies `fantasy-egg`, no máximo 8). v1 é migrado em memória e regravado como v2 na próxima gravação; o backup bruto v1 continua restaurável. Versões futuras seguem recusadas e preservadas.
+
+ADR-035: **Ciclo de dia e noite por janelas de atividade.** Dia de 600 s, início às 07h. Fora da janela, a espécie volta para casa e descansa, salvo fome ou sede urgentes. O relógio deriva de `seconds`, já salvo; não houve campo novo.
+
+ADR-036: **Linha de visão planar.** Discovery e IA usam o segmento contra círculos de troncos (com folga de folhagem) e rochas; o cache é atualizado na frequência da IA. Copas e relevo não bloqueiam. A IA também ouve correria e quem está a menos de 3,2 m.
+
+ADR-037: **Novas espécies dentro da Mata.** Tatu-galinha, sapo-cururu, lambari e teiú cobrem os grupos biológicos e habitats da visão sem criar bioma novo (ADR-020). Musgarim é fantasia original com regra própria de ovos, rotulada no diário. Mamíferos reais não vêm de ovos.
+
+ADR-038: **Domesticação assistida exige ação jogável.** A confiança do musgarim só cresce durante o pulso calmo da Auryn (raio de 11 m) e a oferta só é aceita nessa janela. Não é bônus automático (PROJECT_SPEC, mecânica 3).
+
+ADR-039: **Fotos como dados do save.** JPEG 224×140 copiado do canvas logo após o render (sem `preserveDrawingBuffer`), validado como data URL de imagem ≤ 40 KB. Uma por espécie, substituível.
+
+ADR-040: **Defesa leve sem dano.** Afugentar custa energia e tem recarga; não fere animais, assusta também os não agressivos e reduz a confiança de domesticáveis próximos. Confronto não é a única solução: o pulso calmo e o recuo continuam válidos.

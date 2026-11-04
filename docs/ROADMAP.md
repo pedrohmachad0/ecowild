@@ -7,12 +7,12 @@ Continuação em 27/10/2026 sobre `main@2cdacf7`, após o merge do PR #5, na bra
 | M1 Fundação | Vite, TypeScript, Babylon, CI | Scripts locais e CI do PR #4 passaram; validação da continuação registrada em TESTING |
 | M2 Controles | Teclado/mouse, ações, toque independente, câmera 1ª/3ª pessoa, pausa, foco por Q/Observar | Chromium desktop/toque; gamepad padrão básico sem teste físico; zoom por pinça implementado |
 | M3 Mata | Relevo, lago, trilha, árvores/rochas, frutos, colisões circulares, limite visível | Navegação do MVP; câmera/colisão geométrica completa ainda parcial |
-| M4 Fauna | 11 atores, cinco modelos articulados v2, estados diferenciados, seed, decisão a ~8 Hz | Estúdio e cena real no Chromium; sem cone/linha de visão da IA, memória ou LOD distante; caça abstrata |
-| M5 Vínculo | Auryn, confiança, observação, oferta validada, FOLLOW/STAY/PROTECT/RETURN, recuperação | Regressões e percurso em navegador; proteção contextual simples |
+| M4 Fauna | 22 atores de 10 espécies, modelos procedurais articulados, ciclo de atividade dia/noite, linha de visão planar, IA distante em meia frequência | Chromium; sem memória da IA, LOD de modelos ou bloqueio de visão por copas/relevo; caça abstrata |
+| M5 Vínculo | Auryn, musgarim (assistido pela Auryn), vários companheiros, FOLLOW/STAY/PROTECT/RETURN, farejar, pulso calmo, afugentar | Regressões e percursos em navegador; proteção contextual simples |
 | M6 Diário/bolsa | Campos graduais, pesquisa, filtros, coleta/consumo, guia com mapa gráfico | Sem fotografias ou minimapa fixo no HUD; rastro só via Auryn |
 | M7 Progresso | Save v1 validado, fila, backup no novo jogo, falhas visíveis, preferências separadas | Restauração atômica, exportação, importação JSON com prévia e conflito entre abas implementados |
 | M8 PWA/mobile | Manifest/ícones, shell offline, atualização consentida, base relativa | Chromium emulado; instalação/standalone e desempenho físico pendentes |
-| M9 Expansão | Visão documentada | Não implementado |
+| M9 Expansão | Ovos e nascimento (fantasia), fotografia, desafios científicos, dia/noite, novos grupos biológicos | Um bioma só; sem novos biomas, mergulho, cavernas, montarias ou genética |
 
 ## Marcos oficiais do Prompt Mestre
 
@@ -66,13 +66,13 @@ M4/M5 já têm implementações no PR #4. Esses gates orientam aceitação e exp
 
 | Pilar | Primeiro marco verificável | Recorte atual | Futuro |
 |---|---|---|---|
-| Biologia/geografia/relevos | M3 | Mata imaginária, lago, margens, fatos no diário | Biomas/climas/altitude/ecologia mais ricos |
-| Fauna real e fantástica | M4 | Mamíferos, ave, Auryn; classificação separada | Répteis, anfíbios, peixes, invertebrados, aquático/subterrâneo/arborícola |
-| Catálogo e colecionáveis | M6 | Avistamento por proximidade, habitat, observação e interação | Fotografia, rastros, desafios e coleções |
-| Pets exóticos | M5 | Auryn elegível, nome, vínculo, energia e XP | Novas espécies e habilidades |
+| Biologia/geografia/relevos | M3 | Mata imaginária, lago, margens, tocas, pedras quentes, ciclo de dia e noite | Biomas/climas/altitude/ecologia mais ricos |
+| Fauna real e fantástica | M4 | Mamíferos, ave, réptil (teiú), anfíbio (sapo-cururu), peixe (lambari), Auryn e musgarim; aquático, subterrâneo e arborícola | Invertebrados, mais espécies por bioma |
+| Catálogo e colecionáveis | M6 | Avistamento com linha de visão, habitat, observação, interação, fotos e 12 desafios | Rastros físicos e coleções por bioma |
+| Pets exóticos | M5 | Auryn e musgarim; vários companheiros com nome e nível | Mais espécies e habilidades por pet |
 | Selvagens e defesa | M5 | Lobos ameaçam/atacam com aviso visível; Auryn próxima protege ou acalma | Táticas e prioridades mais ricas |
-| Domesticação assistida | M5: contratos; efeito jogável em expansão | Parcial: Auryn fareja rastros e emite pulso calmo para aproximar presas e afastar o foco dos lobos; não doma outras espécies | Novas espécies elegíveis com vínculo facilitado pelo pet |
-| Ovos para certos pets | M9 | Não disponível | Apenas ovíparos; obtenção/incubação/nascimento coerentes |
+| Domesticação assistida | M5 | **Implementada**: o musgarim adulto só confia enquanto está calmo pelo pulso da Auryn | Outras combinações pet → espécie |
+| Ovos para certos pets | M9 | **Implementado** para o musgarim (fantasia): ninho → bolsa → ninho aquecido → filhote | Outras espécies de fantasia ovíparas |
 | Exploração especial | M3: navegação; expansão posterior | Caminhar e natação superficial | Aquática, aérea, cavernas e subterrâneo |
 
 Não marcar um pilar inteiro como concluído porque um tipo ou um texto existe. PWA é requisito de plataforma, não substitui a identidade do jogo. Multiplayer, genética, economia, construção e montarias ficam depois do MVP sólido.

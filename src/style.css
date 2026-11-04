@@ -260,7 +260,7 @@ details.group summary { cursor: pointer; font-weight: 700; min-height: 28px; }
 #field-note strong { color: var(--accent); font-size: 16px; }
 #field-note span { color: var(--muted); font-size: 12px; }
 #field-note p { margin: 6px 0; font-size: 13px; }
-#field-note small { font-size: 11px; color: var(--muted); }
+#field-note small { font-size: 11px; color: var(--muted); display: block; }
 body[data-observing=true] #toasts { top: 270px; bottom: auto; left: var(--safe-left); transform: none; width: min(220px, 29vw); font-size: 11px; }
 @media (max-height: 430px) {
   #field-note { top: 104px; padding: 8px 10px; }
@@ -271,3 +271,45 @@ body[data-observing=true] #toasts { top: 270px; bottom: auto; left: var(--safe-l
   #field-note { top: 170px; width: 180px; }
   body[data-observing=true] #toasts { top: 300px; width: 180px; }
 }
+
+/* Diary tabs, photos and challenges */
+.tabs { display: flex; gap: 6px; margin: 8px 0 4px; border-bottom: 1px solid var(--line); }
+.tabs button { border-radius: 10px 10px 0 0; border-bottom: none; background: var(--button-ghost); }
+.tabs button[aria-selected=true] { background: var(--button); box-shadow: none; }
+.entry-body { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; margin-top: 6px; }
+.photo { width: 168px; height: auto; aspect-ratio: 224 / 140; border-radius: 8px; border: 2px solid #f4efe4; box-shadow: 0 2px 8px #0006; object-fit: cover; }
+.photo-hint { width: 168px; margin: 0 !important; padding: 10px; border: 1px dashed var(--line); border-radius: 8px; font-size: 12px; }
+@media (max-width: 640px) { .entry-body { grid-template-columns: 1fr; } }
+.challenges { display: grid; gap: 8px; padding: 0; margin: 10px 0; list-style: none; }
+.challenge { display: flex; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: #ffffff07; }
+.challenge p { margin: 4px 0 !important; }
+.challenge .check { flex: none; width: 26px; height: 26px; border: 2px solid var(--line-strong); border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #10241c; }
+.challenge.done { border-color: #f3ce7b88; }
+.challenge.done .check { background: var(--accent); border-color: var(--accent); }
+.challenge.done h3 { color: var(--accent); }
+.pets { display: grid; gap: 6px; padding: 0; margin: 8px 0 0; list-style: none; }
+.pet-row { display: flex; align-items: center; gap: 10px; }
+.pet-row .field { margin: 0; flex: 1; }
+.pet-row label { margin: 0; min-width: 9rem; }
+input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
+.item-icon.egg { border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%; background: radial-gradient(circle at 40% 30%, #fff, #e8efd6 50%, #9cc7a5); box-shadow: 0 0 12px #a8f5c466; }
+
+/* HUD additions */
+#clock-chip[data-period=night] { background: #1b2340e6; border-color: #8fa4ff66; }
+#clock-chip[data-period=dawn], #clock-chip[data-period=dusk] { background: #5a3524e6; border-color: #f3a77b66; }
+#hud-map { width: 132px; height: 132px; opacity: .92; }
+#hud-map .minimap { width: 100%; border: 1px solid var(--line); }
+.minimap.compact .mm-label, .minimap.compact .mm-tree, .minimap.compact .mm-rock { display: none; }
+#photo-flash { position: fixed; inset: 0; z-index: 25; pointer-events: none; background: #fff; opacity: 0; transition: opacity .15s; }
+#shout { position: fixed; z-index: 21; right: var(--safe-right); bottom: calc(var(--safe-bottom) + 128px); border-color: var(--danger); background: #7a2a1fe6; }
+@media (pointer: fine) { #shout { bottom: calc(var(--safe-bottom) + 52px); } }
+#menu #photo { border-color: var(--accent); background: #5a4a1ee6; }
+#field-note small { display: block; }
+@media (max-height: 430px) { #hud-map { width: 92px; height: 92px; } }
+@media (orientation: portrait) and (pointer: coarse) { #hud-map { display: none; } }
+.mm-egg { fill: #e8efd6; stroke: #6fe0c9; stroke-width: .3; }
+.mm-nest { fill: #4f6b37; }
+.mm-burrow { fill: #3a2a1a; stroke: #b5a284; stroke-width: .3; }
+.mm-camp { fill: #b88a4a; stroke: #f4efe4; stroke-width: .3; }
+.mm-key-egg { background: #e8efd6; border: 1px solid #6fe0c9; }
+.mm-key-camp { background: #b88a4a; border-radius: 3px !important; }

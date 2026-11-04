@@ -46,13 +46,23 @@ O script copia dist para um diretório temporário, serve `/ecowild/` em localho
 
 Registro do SW e consulta de installability não comprovam instalação pela interface do sistema operacional nem lançamento standalone. Não há teste físico de iPhone/Android nesta rodada. Repetir explicitamente nesses aparelhos: fullscreen/safe areas, dois dedos + ação, perda de foco/captura, áudio após pausa, armazenamento restrito/quota, adicionar à tela inicial, segundo lançamento, offline, atualização e integridade do progresso.
 
+## Mundo vivo (04/11/2026)
+
+Com o Vite dev em `4173`:
+
+```bash
+EVIDENCE_DIR=/tmp/ecowild-world python scripts/world-check.py
+```
+
+Com fixtures declaradas (teletransporte, relógio, adiantar a incubação) e teclas reais: ovo no ninho (E), ninho aquecido (E), nascimento do filhote com modelo, noite com tatu fora da toca, Observar + Fotografar (Q/P), diário com foto e 12 desafios, afugentar (G) e recarga com filhote, foto e desafios restaurados do save v2. Testes unitários em `tests/livingWorld.test.ts` (dia/noite, linha de visão, lambari, domesticação assistida completa, ovo → filhote → save, migração v1 → v2, fotos, afugentar, desafios) e `tests/panels.test.ts` (acentos e escape de HTML).
+
 ## Regressões unitárias
 
 `tests/integrity.test.ts` cobre movimento/diagonal/obstáculo, água/margem, fuga real do coelho, alcance de proteção, recuperação em terra e STAY, requisitos/recusa/consumo único do vínculo, fluxo de coleta a save, validação de v1/versão desconhecida, identidade/comando/XP, snapshot independente, campos bloqueados e escala de resolução. Testes históricos continuam executados, mas utilitários da fundação antiga não substituem teste do input ativo.
 
 ## Recuperação local de backup
 
-No título ou na pausa, abra **Progresso / backup**. Exporte progresso/backup para downloads locais; importação ainda não é oferecida. Cancelar a confirmação não altera dados. Restaurar exige backup válido e troca os slots atomicamente; o estado anterior (ou sessão pausada) fica no backup para desfazer. Schema desconhecido é exportável como JSON, mas não carregável. Não apagar banco para resolver cache/PWA.
+No título ou na pausa, abra **Progresso / backup**. Exporte progresso/backup para downloads locais ou importe um JSON com prévia e confirmação. Cancelar a confirmação não altera dados. Restaurar exige backup válido e troca os slots atomicamente; o estado anterior (ou sessão pausada) fica no backup para desfazer. Schema desconhecido é exportável como JSON, mas não carregável. Não apagar banco para resolver cache/PWA.
 
 `recovery-check.py` usa fixtures isoladas e IndexedDB real do Chromium: exportação raw de versão desconhecida; cancelar/restaurar/recarregar com Auryn, diário e comando; conflito entre duas sessões/abas; bloqueio persistente após inspeção/exportação; abort com rollback; backup inválido; restauração antes do primeiro autosave e desfazer; Escape preservando pausa; joystick + pinça com três dedos e transição 2→1; portrait e alvos de toque. Não simula percurso de exploração. `tests/touchInput.test.ts` verifica os listeners ativos, roda, multitouch, cancelamento, foco, resize e descarte; geometria/roteamento nativo são verificados no Chromium.
 

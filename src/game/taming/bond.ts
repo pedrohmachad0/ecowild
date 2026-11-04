@@ -58,3 +58,23 @@ export function stepBond(p: BondInput): BondResult {
   const tamed = trust >= 100;
   return { trust, tamed, consumed, startled, bonded: tamed };
 }
+
+/**
+ * Assisted taming (mosslight): trust only grows while a companion's calm pulse is
+ * active. Without it the creature is too timid; trust slowly fades. The offering is
+ * accepted only while calm, after observation and with enough trust.
+ */
+export const ASSISTED_RULES = { range: 2.4, calmRange: 5.4, trust: 50, observation: 2, cap: 72 } as const;
+
+export function stepAssistedBond(p: { trust: number; dist: number; sprinting: boolean; moving: boolean; offer: boolean; calm: number; observed: boolean; dt: number }): BondResult {
+  let trust = p.trust, startled = false, consumed = false;
+  if (p.dist < 7 && p.sprinting) { trust -= 30 * p.dt; startled = true; }
+  else if (p.calm > 0 && p.dist < ASSISTED_RULES.calmRange) trust = Math.min(ASSISTED_RULES.cap, trust + (p.moving ? 5 : 12) * p.dt);
+  else trust -= 0.5 * p.dt;
+  if (p.offer && p.calm > 0 && p.dist < ASSISTED_RULES.range && !p.sprinting && p.observed && trust >= ASSISTED_RULES.trust) {
+    trust = 100; consumed = true;
+  }
+  trust = Math.max(0, Math.min(100, trust));
+  const tamed = trust >= 100;
+  return { trust, tamed, consumed, startled, bonded: tamed };
+}

@@ -1,6 +1,6 @@
 import type { QualityName } from "../types.ts";
-export type Preferences = { quality: QualityName; lookSens: number; deadzone: number };
-const defaults: Preferences = { quality: "auto", lookSens: 0.0045, deadzone: 0.16 };
+export type Preferences = { quality: QualityName; lookSens: number; deadzone: number; hudMap: boolean };
+const defaults: Preferences = { quality: "auto", lookSens: 0.0045, deadzone: 0.16, hudMap: true };
 export function loadPreferences(legacy?: Partial<Preferences>): Preferences {
   let raw = legacy;
   try { raw = JSON.parse(localStorage.getItem("ecowild.preferences") ?? "null") ?? legacy; } catch { /* session defaults */ }
@@ -9,6 +9,7 @@ export function loadPreferences(legacy?: Partial<Preferences>): Preferences {
     quality: ["auto", "low", "medium", "high"].includes(raw?.quality ?? "") ? raw!.quality! : defaults.quality,
     lookSens: bounded(raw?.lookSens, defaults.lookSens, 0.001, 0.02),
     deadzone: bounded(raw?.deadzone, defaults.deadzone, 0.05, 0.35),
+    hudMap: typeof raw?.hudMap === "boolean" ? raw.hudMap : defaults.hudMap,
   };
 }
 export function storePreferences(prefs: Preferences): boolean {

@@ -1,13 +1,14 @@
 import type { EcoWildGame } from "../EcoWildGame.ts";
 import type { LoadResult } from "../persistence/save.ts";
-import type { SaveV1 } from "../types.ts";
+import type { SaveData } from "../types.ts";
 
 /** Human summary of a validated save, used for slots and the import preview. */
-export function describeSave(data: SaveV1): string {
+export function describeSave(data: SaveData): string {
   const known = Object.values(data.discoveries).filter(f => f?.seen).length;
   const minutes = Math.floor(data.seconds / 60);
-  const pet = data.pet;
-  return `Save v1 · ${minutes} min de jogo · ${known} espécie(s) no diário · ${data.inventory.berries} frutos da mata · ${data.inventory.glowfruit} frutiluz${pet ? ` · companheira ${pet.name || "Auryn"}` : ""}.`;
+  const pets = data.pets.map(p => p.name).join(", ");
+  const challenges = Object.keys(data.challenges).length;
+  return `Save v${data.version} · ${minutes} min de jogo · ${known} espécie(s) no diário · ${challenges} desafio(s) · ${data.inventory.berries} frutos da mata · ${data.inventory.glowfruit} frutiluz${data.inventory.eggs ? ` · ${data.inventory.eggs} ovo(s)` : ""}${pets ? ` · companheiros: ${pets}` : ""}.`;
 }
 
 /** Native modal keeps focus and touch scrolling independent of gameplay. */
@@ -18,7 +19,7 @@ export function bindProgress(game: EcoWildGame) {
   const abort = new AbortController();
   const options = { signal: abort.signal };
   let busy = false, returnFocus: HTMLElement | null = null;
-  let pendingImport: SaveV1 | null = null;
+  let pendingImport: SaveData | null = null;
   const fileInput = dialog.querySelector<HTMLInputElement>("#import-file")!;
   const preview = dialog.querySelector<HTMLElement>("#import-preview")!;
   const resetImport = () => { pendingImport = null; fileInput.value = ""; preview.textContent = ""; button("import-confirm").hidden = true; };

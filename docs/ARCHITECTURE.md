@@ -17,6 +17,16 @@ Stack: Babylon.js 7.54.3, TypeScript estrito, Vite 6, HTML/CSS e Vitest. Sem ser
 
 O orquestrador ainda é grande, assim como a simulação. A extração de interação, schema, touch e painéis reduz responsabilidades; separar percepção/navegação é o próximo passo, sem substituir o motor atual.
 
+## Mundo vivo (04/11/2026)
+
+- `world/clock.ts`: dia de 600 s derivado de `seconds`; períodos, luz e janelas de atividade. `render/forest.ts#setTime` ajusta sol, céu, névoa, lanterna, fogueira e vaga-lumes; as luzes existem desde a construção para que os materiais congelados compilem com elas.
+- `sim/perception.ts`: linha de visão planar e alcance noturno. `updateCreature` guarda `seesPlayer` na frequência da IA; a IA distante (> 30 m) decide em meia frequência.
+- `ai/brain.ts` recebe `inactive`/`homeDist` (descanso fora do horário) e `calmed`. Tatu (`hidden` na toca), lambari (`updateFish`, preso ao lago) e águia (poleiro à noite) têm locomoção própria.
+- Vários pets: `pets(sim)`; comandos para todos; `petViews` para o HUD. Domesticação por espécie: `stepBond` (Auryn) e `stepAssistedBond` (musgarim, depende de `calm`).
+- Ovos: props `egg` nos `NESTS`, `inventory.eggs`, `sim.incubator` no `CAMP`, `spawnBorn` para filhotes (`born`, IDs `hatch-N`), cujos modelos são criados sob demanda em `EcoWildGame.syncActors`.
+- `progression/challenges.ts`: 12 desafios avaliados duas vezes por segundo a partir do estado real; os concluídos são salvos. Fotos: `EcoWildGame.capturePhoto` copia o canvas logo após `scene.render()` e chama `recordPhoto`.
+- Save v2 em `persistence/schema.ts` (migração do v1). `render/creatures/smallfauna.ts` constrói as cinco espécies novas com `Sculpt`.
+
 ## Câmera e apresentação dos encontros
 
 `camera/boom.ts` resolve o segmento entre pivô e posição desejada contra cilindros finitos, elipsoides e amostras do terreno. `worldVolumes.ts` cria uma vez os volumes de troncos, duas copas por árvore e rochas conforme `render/forest.ts`. Recuo é imediato; somente a extensão da distância é suavizada, mantendo a órbita atual para não cortar caminho através de obstáculos. Não é raycast de triângulos; arbustos e animais não bloqueiam a câmera. Se o pivô iniciar dentro do volume, ela retrai ao pivô. O personagem fica oculto no foco e quando o recuo aproxima demais a câmera.

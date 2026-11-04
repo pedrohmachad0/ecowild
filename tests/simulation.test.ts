@@ -140,7 +140,11 @@ test("tamed Auryn follows and save round-trips", () => {
     pet: { name: "Luz", xp: 10, command: "STAY" },
   });
   assert.ok(blob);
-  assert.equal(blob.pet?.name, "Luz");
+  // v1 is migrated in memory to v2: the single Auryn pet becomes a pets[] entry.
+  assert.equal(blob.version, 2);
+  assert.equal(blob.pets[0]?.name, "Luz");
+  assert.equal(blob.pets[0]?.command, "STAY");
+  assert.equal(blob.inventory.eggs, 0);
   assert.equal(blob.discoveries.auryn?.seen, true);
   assert.equal(migrateSave({ nope: true }), null);
 });

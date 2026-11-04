@@ -2,7 +2,7 @@ import { heightAt } from "./terrain.ts";
 import { CONFIG } from "../config.ts";
 
 export type Obstacle = { x: number; z: number; r: number; kind: "tree" | "rock" };
-export type Prop = { id: string; kind: "glow" | "berry"; x: number; z: number };
+export type Prop = { id: string; kind: "glow" | "berry" | "egg"; x: number; z: number };
 
 const TREE_SPOTS: readonly (readonly [number, number, number])[] = [
   [-7, 23, 1.05],
@@ -61,8 +61,19 @@ export function rockList(): Obstacle[] {
 }
 
 export function obstacles(): Obstacle[] {
-  return [...treeList(), ...rockList()];
+  return [...treeList(), ...rockList(), { x: CAMP.tent.x, z: CAMP.tent.z, r: 0.95, kind: "rock" }];
 }
+
+export const NESTS = [
+  { id: "nest-0", x: 4.5, z: -19.5 },
+  { id: "nest-1", x: 16.5, z: -22 },
+] as const;
+
+/** Research camp at the clearing: respawn point and warmed nest (incubator). */
+export const CAMP = { x: -4.5, z: 20.5, incubator: { x: -3.2, z: 19.2 }, tent: { x: -5.6, z: 21.6 } } as const;
+
+/** Lit perch where the eagle rests at night. */
+export const PERCH = { x: 20, z: 11 } as const;
 
 export function props(): Prop[] {
   return [
@@ -72,7 +83,13 @@ export function props(): Prop[] {
     { id: "berry-0", kind: "berry", x: -2, z: 12 },
     { id: "berry-1", kind: "berry", x: 11, z: 14 },
     { id: "berry-2", kind: "berry", x: -16, z: 6 },
-    { id: "berry-3", kind: "berry", x: 3, z: -2 },
+    // Moved out of the lake: at (3, -2) the bush stood in deep water.
+    { id: "berry-3", kind: "berry", x: -1, z: -3 },
+    { id: "berry-4", kind: "berry", x: 10, z: -20 },
+    { id: "berry-5", kind: "berry", x: 22, z: 2 },
+    // Fantasy rule: mosslight nests hold one egg each for the forest's warmth to hatch.
+    { id: "egg-0", kind: "egg", x: NESTS[0]!.x, z: NESTS[0]!.z },
+    { id: "egg-1", kind: "egg", x: NESTS[1]!.x, z: NESTS[1]!.z },
   ];
 }
 
@@ -95,5 +112,27 @@ export const SPAWNS = {
   ],
   eagle: { id: "eagle-1", x: 2, z: 4 },
   auryn: { id: "auryn-1", x: -10, z: -6 },
+  armadillo: [
+    { id: "armadillo-1", x: 26, z: 4 },
+    { id: "armadillo-2", x: 23.5, z: -6.5 },
+  ],
+  toad: [
+    { id: "toad-1", x: 1.6, z: 5.7 },
+    { id: "toad-2", x: 13.8, z: 5.3 },
+  ],
+  fish: [
+    { id: "fish-1", x: 7, z: 1 },
+    { id: "fish-2", x: 9, z: 3 },
+    { id: "fish-3", x: 8.5, z: 0.5 },
+    { id: "fish-4", x: 6.5, z: 3.2 },
+  ],
+  tegu: [
+    { id: "tegu-1", x: 16.8, z: 5.6 },
+    { id: "tegu-2", x: -1.4, z: 10.2 },
+  ],
+  mosslight: [
+    { id: "moss-1", x: 9, z: -21 },
+    { id: "moss-2", x: 13, z: -24 },
+  ],
   territory: { x: -16.5, z: -15.5, r: 9 },
 } as const;

@@ -1,4 +1,5 @@
 import { SPECIES_BY_ID } from "../data/species.ts";
+import type { BioGroup } from "../data/species.ts";
 import type { DiscoveryFlags, SpeciesId } from "../types.ts";
 import { emptyDiscovery } from "../persistence/schema.ts";
 
@@ -39,6 +40,8 @@ export type CatalogEntry = {
   curiosity: string;
   abilities: readonly string[];
   domesticable: boolean;
+  group: BioGroup | null;
+  reproduction: string;
   progress: number;
   flags: DiscoveryFlags;
 };
@@ -64,6 +67,8 @@ export function catalogView(book: Partial<Record<SpeciesId, DiscoveryFlags>>): C
       curiosity: flags.behavior ? species.curiosity : "Fique perto, sem correr, até o diário completar a observação.",
       abilities: flags.interacted ? species.abilities : [],
       domesticable: known ? species.domesticable : false,
+      group: known ? species.group : null,
+      reproduction: !flags.behavior ? "—" : species.reproduction === "viviparous" ? "Vivíparo" : species.reproduction === "oviparous" ? "Ovíparo" : "Ovos (regra de fantasia)",
       progress: researchProgress(flags),
       flags,
     };

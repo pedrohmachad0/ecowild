@@ -14,11 +14,17 @@ import { animateRig, buildCreature, buildPlayer } from "./render/actors.ts";
 import type { Rig } from "./render/actors.ts";
 import { buildForest } from "./render/forest.ts";
 import type { Forest } from "./render/forest.ts";
-import { commandPet, createSim, eatBerry, petSnapshot, stepSim, toSave, trustSnapshot, usePetAbility } from "./sim/simulation.ts";
+import { commandPet, createSim, eatBerry, petSnapshot, petViews, recordPhoto, shout, stepSim, toSave, trustSnapshot, usePetAbility } from "./sim/simulation.ts";
+import type { PetView } from "./sim/simulation.ts";
+import { challengeViews } from "./progression/challenges.ts";
+import type { ChallengeView } from "./progression/challenges.ts";
+import { clockLabel, dayFraction, dayPeriod, PERIOD_LABEL } from "./world/clock.ts";
+import type { DayPeriod } from "./world/clock.ts";
+import type { SpeciesId } from "./types.ts";
 import type { PetAbility, Simulation, SimCreature } from "./sim/simulation.ts";
 import { parseImport } from "./persistence/importSave.ts";
 import type { ImportPreview } from "./persistence/importSave.ts";
-import type { CameraMode, PetCommand, QualityName, SaveV1 } from "./types.ts";
+import type { CameraMode, PetCommand, QualityName, SaveData } from "./types.ts";
 import { heightAt } from "./world/terrain.ts";
 
 const EMPTY_INPUT = {
@@ -31,6 +37,7 @@ const EMPTY_INPUT = {
   useBerryEdge: false,
   pet: null,
   discover: false,
+  shoutEdge: false,
 };
 
 export class EcoWildGame {
@@ -45,7 +52,7 @@ export class EcoWildGame {
   private rigs = new Map<string, Rig>();
   private playing = false;
   private wantStart: "new" | "continue" | null = null;
-  private pendingSave: SaveV1 | null = null;
+  private pendingSave: SaveData | null = null;
   private mode: CameraMode = "third";
   private camYaw = 0;
   private camPitch: number = CONFIG.camera.pitch;
@@ -80,7 +87,11 @@ export class EcoWildGame {
   private saveQueue: Promise<boolean> = Promise.resolve(true);
   private contextLost = false;
   private lastShadow: Forest["shadows"] = null;
-  private pendingActions = { jumpEdge: false, interactEdge: false, useBerryEdge: false, pet: null as PetCommand | null };
+  private pendingActions = { jumpEdge: false, interactEdge: false, useBerryEdge: false, shoutEdge: false, pet: null as PetCommand | null };
+  private pendingPhoto: string | null = null;
+  private flash = 0;
+  private photoCanvas: HTMLCanvasElement | null = null;
+  private hudMap = false;
   private lifecycle = new AbortController();
 
   constructor(
@@ -138,7 +149,7 @@ export class EcoWildGame {
       this.pendingSave = loaded.data;
       this.saveStatus = loaded.status === "invalid" ? "Save incompatível preservado. Novo jogo pede confirmação." : loaded.status === "unavailable" ? "Armazenamento indisponível. Seu save não foi alterado." : loaded.status === "loaded" ? "Progresso local encontrado." : "Nenhum progresso salvo ainda.";
       const prefs = loadPreferences(loaded.data?.settings);
-      this.quality = prefs.quality; this.lookSens = prefs.lookSens; this.deadzone = prefs.deadzone;
+      this.quality = prefs.quality; this.lookSens = prefs.lookSens; this.deadzone = prefs.deadzone; this.hudMap = prefs.hudMap;
       this.input.setDeadzone(this.deadzone);
       if (this.quality !== "auto") this.tier = this.quality;
       this.forest.setTier(this.tier); this.applyScale();
@@ -188,7 +199,13 @@ export class EcoWildGame {
   setStick(x: number, y: number): void {
     this.input.setStick(x, y);
   }
-  setHold(name: "jump" | "sprint" | "interact" | "camera" | "pause" | "catalog" | "inventory" | "map" | "berry", down: boolean): void {
+  /** Photograph the animal framed by Observar. Captured right after the next render. */
+  takePhoto(): void {
+    if (!this.playing || this.panel !== "none" || !this.focusId) return;
+    this.pendingPhoto = this.focusId;
+  }
+  setHudMap(on: boolean): void { this.hudMap = on; this.persistPreferences(); this.pushHud(); }
+  setHold(name: "jump" | "sprint" | "interact" | "camera" | "pause" | "catalog" | "inventory" | "map" | "berry" | "shout" | "photo", down: boolean): void {
     this.input.setHold(name, down);
   }
   addLook(dx: number, dy: number): void {
@@ -208,8 +225,9 @@ export class EcoWildGame {
       if (!creature) return;
       this.previousView = { mode: this.mode, yaw: this.camYaw, pitch: this.camPitch, distance: this.camDist };
       this.focusId = creature.id;
-      this.mode = "third"; this.camYaw = creature.yaw + 2.5; this.camPitch = 0.22;
-      this.camDist = creature.speciesId === "rabbit" ? 2.1 : creature.speciesId === "eagle" ? 3.5 : 3;
+      const low = creature.speciesId === "toad" || creature.speciesId === "fish" || creature.speciesId === "tegu" || creature.speciesId === "armadillo";
+      this.mode = "third"; this.camYaw = creature.yaw + 2.5; this.camPitch = low ? 0.5 : 0.22;
+      this.camDist = creature.speciesId === "rabbit" || low ? 2.1 : creature.speciesId === "eagle" ? 3.5 : 3;
       this.boomDistance = this.camDist;
     }
     this.pushHud();
@@ -239,16 +257,17 @@ export class EcoWildGame {
     this.deadzone = clamp(value, 0.05, 0.35); this.input.setDeadzone(this.deadzone); this.persistPreferences();
   }
   private persistPreferences(): void {
-    if (!storePreferences({ quality: this.quality, lookSens: this.lookSens, deadzone: this.deadzone })) {
+    if (!storePreferences({ quality: this.quality, lookSens: this.lookSens, deadzone: this.deadzone, hudMap: this.hudMap })) {
       this.saveStatus = "Preferências válidas só nesta sessão: armazenamento indisponível.";
     }
   }
-  renamePet(name: string): void {
+  renamePet(name: string, id?: string): void {
     if (!this.sim) return;
     const clean = name.slice(0, 16);
-    this.sim.petName = clean;
-    const auryn = this.sim.creatures.find((c) => c.speciesId === "auryn");
-    if (auryn?.tamed) auryn.name = clean.trim() || "Auryn";
+    const pet = this.sim.creatures.find(c => c.tamed && (id ? c.id === id : c.speciesId === "auryn"));
+    if (!pet) { this.sim.petName = clean; return; }
+    if (pet.speciesId === "auryn") this.sim.petName = clean;
+    pet.name = clean.trim() || (pet.speciesId === "auryn" ? "Auryn" : pet.name);
   }
   saveNow(quiet = false): Promise<boolean> {
     if (this.recovering || this.saveConflict) return Promise.resolve(false);
@@ -286,7 +305,7 @@ export class EcoWildGame {
    * Imported progress becomes primary; the previous primary goes to backup in the same
    * IndexedDB transaction. An open session is saved first so it is the one preserved.
    */
-  async importProgress(data: SaveV1): Promise<boolean> {
+  async importProgress(data: SaveData): Promise<boolean> {
     if (this.recovering || this.saveConflict) return false;
     this.recovering = true;
     try {
@@ -344,7 +363,7 @@ export class EcoWildGame {
   open(panel: "none" | "catalog" | "inventory" | "map" | "pause"): void {
     this.panel = panel;
     this.acc = 0;
-    this.pendingActions = { jumpEdge: false, interactEdge: false, useBerryEdge: false, pet: null };
+    this.pendingActions = { jumpEdge: false, interactEdge: false, useBerryEdge: false, shoutEdge: false, pet: null };
     this.input.setGameplay(this.playing && panel === "none");
     if (panel === "none" && this.playing) this.audio.start();
     this.pushHud();
@@ -383,6 +402,7 @@ export class EcoWildGame {
       this.pendingActions.jumpEdge ||= input.jumpEdge;
       this.pendingActions.interactEdge ||= input.interactEdge;
       this.pendingActions.useBerryEdge ||= input.useBerryEdge;
+      this.pendingActions.shoutEdge ||= input.shoutEdge;
       this.pendingActions.pet = input.pet ?? this.pendingActions.pet;
       this.acc += dt;
       let first = true;
@@ -400,10 +420,11 @@ export class EcoWildGame {
             useBerryEdge: first && this.pendingActions.useBerryEdge,
             pet: first ? this.pendingActions.pet : null,
             discover: true,
+            shoutEdge: first && this.pendingActions.shoutEdge,
           },
           CONFIG.fixedDt,
         );
-        this.pendingActions = { jumpEdge: false, interactEdge: false, useBerryEdge: false, pet: null };
+        this.pendingActions = { jumpEdge: false, interactEdge: false, useBerryEdge: false, shoutEdge: false, pet: null };
         first = false;
         this.acc -= CONFIG.fixedDt;
         guard++;
@@ -414,11 +435,16 @@ export class EcoWildGame {
     this.updateCamera(input, dt, blocked);
     this.syncActors(blocked ? 0 : dt);
     this.syncProps();
+    const dayF = dayFraction(this.sim.time);
     if (this.forest) {
       this.forest.water.position.y = CONFIG.waterY + 0.04 + Math.sin(this.time * 1.4) * 0.03;
+      this.forest.setTime(dayF, this.sim.player, this.time);
+      this.forest.setIncubator(this.sim.incubator?.progress ?? null, this.time);
     }
-    this.audio.update(dt, this.playing && this.panel === "none");
+    this.audio.update(dt, this.playing && this.panel === "none", dayPeriod(dayF));
     this.scene.render();
+    if (this.pendingPhoto) this.capturePhoto(this.pendingPhoto);
+    if (this.flash > 0) this.flash = Math.max(0, this.flash - dt);
     this.trackFps(dt);
     this.hudAcc += dt;
     if (this.hudAcc > 0.12) {
@@ -434,6 +460,25 @@ export class EcoWildGame {
     }
   }
 
+  /** The drawing buffer is still valid right after render: copy a small JPEG for the diary. */
+  private capturePhoto(id: string): void {
+    this.pendingPhoto = null;
+    if (!this.sim || !this.engine) return;
+    const source = this.engine.getRenderingCanvas();
+    if (!source) return;
+    const canvas = this.photoCanvas ??= document.createElement("canvas");
+    canvas.width = 224; canvas.height = 140;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const ratio = canvas.width / canvas.height, sw = Math.min(source.width, source.height * ratio), sh = sw / ratio;
+    try {
+      ctx.drawImage(source, (source.width - sw) / 2, (source.height - sh) / 2, sw, sh, 0, 0, canvas.width, canvas.height);
+      const image = canvas.toDataURL("image/jpeg", 0.72);
+      if (recordPhoto(this.sim, id, image)) { this.flash = 0.35; this.audio.shutter(); void this.saveNow(true); }
+    } catch { this.sim.toasts.push({ text: "Não foi possível guardar a foto neste navegador.", ttl: 3 }); }
+    this.pushHud();
+  }
+
   private handleUi(input: ReturnType<InputManager["sample"]>): void {
     if (!this.playing || this.progressOpen) return;
     if (input.pauseEdge) this.open(this.panel === "none" ? "pause" : "none");
@@ -443,6 +488,7 @@ export class EcoWildGame {
     if (this.panel === "none" && this.focusId && (Math.hypot(input.moveX, input.moveZ) > 0.1 || input.jumpEdge)) this.stopObservation();
     if (input.observeEdge && this.panel === "none") this.toggleObservation();
     if (input.ability && this.panel === "none") this.petAbility(input.ability);
+    if (input.photoEdge && this.panel === "none") this.takePhoto();
     if (input.cameraEdge && this.panel === "none") {
       this.stopObservation();
       this.mode = this.mode === "third" ? "first" : "third";
@@ -473,8 +519,9 @@ export class EcoWildGame {
     }
     const p = this.sim.player;
     const b = basis(this.camYaw);
+    // Small or swimming animals: keep the pivot above ground and water so the boom has room.
     const pivot = focused
-      ? { x: focused.x, y: focused.y + PORTRAIT_HEIGHT[focused.speciesId], z: focused.z }
+      ? { x: focused.x, y: Math.max(focused.y + PORTRAIT_HEIGHT[focused.speciesId], heightAt(focused.x, focused.z) + 0.35, CONFIG.waterY + 0.3), z: focused.z }
       : { x: p.x, y: p.y + (this.mode === "first" ? 1.55 : CONFIG.camera.eye), z: p.z };
     let dist = this.camDist;
     if (p.swimming && !focused) dist = Math.min(dist, 4.4);
@@ -487,6 +534,10 @@ export class EcoWildGame {
       const boom = advanceBoom(pivot, desired, this.boomDistance, dt, this.cameraVolumes, heightAt);
       this.boomDistance = boom.distance;
       this.camera.position.set(boom.position.x, boom.position.y, boom.position.z);
+      // Never let the camera sit on its own target: that degenerates the view matrix.
+      if (Math.hypot(boom.position.x - pivot.x, boom.position.y - pivot.y, boom.position.z - pivot.z) < 0.25) {
+        this.camera.position.set(pivot.x - b.fx * 0.35, pivot.y + 0.45, pivot.z - b.fz * 0.35);
+      }
       this.lookAt.set(pivot.x, pivot.y, pivot.z);
     }
     this.camera.setTarget(this.lookAt);
@@ -507,14 +558,24 @@ export class EcoWildGame {
     this.playerRig.root.position.set(p.x, p.y, p.z);
     this.playerRig.root.rotation.y = p.yaw + Math.PI;
     animateRig(this.playerRig, p.speed > 0.2 ? this.time * 8 : 0, p.speed > 0.2, this.time);
+    const alive = new Set<string>();
     for (const c of this.sim.creatures) {
-      const rig = this.rigs.get(c.id);
+      alive.add(c.id);
+      let rig = this.rigs.get(c.id);
+      // Creatures born in play (hatchlings) get their model the first time they appear.
+      if (!rig && this.scene) {
+        rig = buildCreature(this.scene, c.id, c.speciesId);
+        this.rigs.set(c.id, rig);
+        if (shadows) for (const mesh of rig.root.getChildMeshes()) shadows.addShadowCaster(mesh, false);
+      }
       if (!rig) continue;
+      rig.root.setEnabled(true);
       rig.root.position.set(c.x, c.y, c.z);
       rig.root.rotation.y = c.yaw + Math.PI;
       animateRig(rig, c.phase, c.moving, this.time, { state: c.state, fear: Math.max(c.fear, c.startled > 0 ? 0.8 : 0), trust: c.trust, tamed: c.tamed, dt });
-
     }
+    // A restore or import can remove born creatures: hide their models instead of leaving ghosts.
+    for (const [id, rig] of this.rigs) if (!alive.has(id)) rig.root.setEnabled(false);
   }
 
   private syncProps(): void {
@@ -569,17 +630,18 @@ export class EcoWildGame {
         pet: null,
         trust: null,
         catalog: [],
-        inventory: { glowfruit: 0, berries: 0 },
+        inventory: { glowfruit: 0, berries: 0, eggs: 0 },
         panel: "none",
         toasts: [],
         discovered: 0,
-        species: 5,
+        species: 10,
         map: [],
         player: { x: 0, z: 18 },
         yaw: 0,
         swimming: false,
         hasSave: !!this.pendingSave,
         threat: 0, track: null, abilities: null, props: [],
+        pets: [], challenges: [], photos: {}, day: { clock: "", period: "day", label: "", fraction: 0.3 }, incubator: null, flash: 0, hudMap: this.hudMap, shoutReady: false,
       };
     }
     const avg = this.fpsWindow.length
@@ -613,7 +675,7 @@ export class EcoWildGame {
         speciesId: c.speciesId,
         x: c.x,
         z: c.z,
-        known: !!sim.discoveries[c.speciesId]?.seen,
+        known: !!sim.discoveries[c.speciesId]?.seen && !c.hidden,
         tamed: c.tamed,
         state: c.state,
       })),
@@ -623,6 +685,14 @@ export class EcoWildGame {
       hasSave: !!this.pendingSave,
       threat: sim.threat,
       props: sim.props.map(p => ({ id: p.id, kind: p.kind, x: p.x, z: p.z, available: !p.taken && p.depleted <= 0 })),
+      pets: petViews(sim),
+      challenges: challengeViews(sim),
+      photos: Object.fromEntries(Object.entries(sim.photos).map(([id, photo]) => [id, photo!.image])),
+      day: (() => { const f = dayFraction(sim.time), period = dayPeriod(f); return { clock: clockLabel(f), period, label: PERIOD_LABEL[period], fraction: f }; })(),
+      incubator: sim.incubator ? sim.incubator.progress : null,
+      flash: this.flash,
+      hudMap: this.hudMap,
+      shoutReady: sim.shoutCd <= 0 && sim.player.energy >= 15,
       track: sim.track ? { x: sim.track.x, z: sim.track.z, label: sim.track.label } : null,
       abilities: (() => {
         const pet = sim.creatures.find(c => c.speciesId === "auryn" && c.tamed);
@@ -701,7 +771,7 @@ export type HudSnapshot = {
   pet: { name: string; command: PetCommand; level: number; xp: number } | null;
   trust: { value: number; near: boolean } | null;
   catalog: ReturnType<typeof catalogView>;
-  inventory: { glowfruit: number; berries: number };
+  inventory: { glowfruit: number; berries: number; eggs: number };
   panel: "none" | "catalog" | "inventory" | "map" | "pause";
   toasts: string[];
   discovered: number;
@@ -712,7 +782,15 @@ export type HudSnapshot = {
   swimming: boolean;
   hasSave: boolean;
   threat: number;
-  props: { id: string; kind: "glow" | "berry"; x: number; z: number; available: boolean }[];
+  props: { id: string; kind: "glow" | "berry" | "egg"; x: number; z: number; available: boolean }[];
+  pets: PetView[];
+  challenges: ChallengeView[];
+  photos: Partial<Record<SpeciesId, string>>;
+  day: { clock: string; period: DayPeriod; label: string; fraction: number };
+  incubator: number | null;
+  flash: number;
+  hudMap: boolean;
+  shoutReady: boolean;
   track: { x: number; z: number; label: string } | null;
   abilities: { near: boolean; track: number; calm: number } | null;
 };

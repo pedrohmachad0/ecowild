@@ -103,7 +103,7 @@ describe('habilidades da companheira (assistência, não domesticação)', () =>
     const calmWolf = decide({ speciesId: 'wolf', diet: 'carnivore', temperament: 'territorial', fleeRadius: 5, hunger: .9, thirst: .2, fear: 0, energy: 1, threatDist: null, preyDist: 3, foodDist: null, waterDist: 20, playerDist: 3, playerSprinting: false, inTerritory: true, tamed: false, command: null, preferIdle: false, calmed: true });
     expect(['WANDER', 'IDLE']).toContain(calmWolf);
   });
-  test('habilidades não entram no save v1', () => {
+  test('habilidades não entram no save', () => {
     const { sim, pet } = tamedFixture();
     pet.x = sim.player.x + 1; pet.z = sim.player.z;
     usePetAbility(sim, 'TRACK');
@@ -115,13 +115,13 @@ describe('habilidades da companheira (assistência, não domesticação)', () =>
 
 describe('importação de progresso', () => {
   const valid = () => toSave(createSim(null), { quality: 'auto', lookSens: .0045 });
-  test('aceita save v1 exportado e normaliza', () => {
+  test('aceita save exportado e normaliza', () => {
     const result = parseImport(JSON.stringify(valid(), null, 2));
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.data.version).toBe(1);
+    if (result.ok) expect(result.data.version).toBe(2);
   });
   test('recusa JSON inválido, versão futura, estrutura errada e arquivo enorme', () => {
-    for (const text of ['{nope', JSON.stringify({ ...valid(), version: 2 }), JSON.stringify({ hello: 1 }), '[]', 'x'.repeat(600 * 1024)]) {
+    for (const text of ['{nope', JSON.stringify({ ...valid(), version: 3 }), JSON.stringify({ hello: 1 }), '[]', 'x'.repeat(600 * 1024)]) {
       const result = parseImport(text);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.reason.length).toBeGreaterThan(5);

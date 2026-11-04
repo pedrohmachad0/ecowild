@@ -12,6 +12,7 @@ import type { Rig } from "./rig.ts";
 import { buildCapybara, buildRabbit } from "./creatures/herbivores.ts";
 import { buildWolf, buildAuryn } from "./creatures/canids.ts";
 import { buildEagle } from "./creatures/eagle.ts";
+import { buildArmadillo, buildFish, buildMosslight, buildTegu, buildToad } from "./creatures/smallfauna.ts";
 export type { Rig } from "./rig.ts";
 export { animateRig } from "./creatures/animate.ts";
 
@@ -60,8 +61,14 @@ function leg(scene: Scene, parent: TransformNode, mat: StandardMaterial, x: numb
 
 /** Faces local +Z. Simulation yaw is applied by the runtime to the root. */
 export function buildCreature(scene: Scene, id: string, species: SpeciesId): Rig {
-  const builders = { capybara: buildCapybara, rabbit: buildRabbit, wolf: buildWolf, eagle: buildEagle, auryn: buildAuryn };
-  return builders[species](scene, id);
+  const builders: Record<SpeciesId, (scene: Scene, id: string) => Rig> = {
+    capybara: buildCapybara, rabbit: buildRabbit, wolf: buildWolf, eagle: buildEagle, auryn: buildAuryn,
+    armadillo: buildArmadillo, toad: buildToad, fish: buildFish, tegu: buildTegu, mosslight: buildMosslight,
+  };
+  const rig = builders[species](scene, id);
+  // Hatchlings are visibly young.
+  if (id.startsWith("hatch-")) rig.root.scaling.setAll(0.68);
+  return rig;
 }
 
 function limb(scene: Scene, parent: TransformNode, upper: StandardMaterial, lower: StandardMaterial, x: number, y: number, len: number, width: number, lowerLen: number): TransformNode {

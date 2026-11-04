@@ -41,10 +41,13 @@
           <div class="meter" data-kind="water"><span class="meter-label">Água</span><span class="meter-track"><span class="meter-fill"></span></span></div>
         </div>
         <div id="hud-chips">
+          <span id="clock-chip" class="chip"></span>
           <span id="journal-chip" class="chip"></span>
+          <span id="egg-chip" class="chip" hidden></span>
           <span id="pet-chip" class="chip" hidden></span>
           <span id="threat-chip" class="chip danger" role="alert" hidden>Lobo rosnando</span>
         </div>
+        <div id="hud-map" aria-hidden="true" hidden></div>
       </div>
       <div id="menu">
         <button id="open-catalog" type="button">Diário</button>
@@ -53,9 +56,12 @@
         <button id="open-pause" type="button">Pausa</button>
         <button id="camera" type="button">Câmera</button>
         <button id="observe" type="button" hidden>Observar</button>
+        <button id="photo" type="button" hidden>Fotografar</button>
       </div>
     </div>
-    <aside id="field-note" hidden aria-label="Animal observado"><strong id="encounter-name"></strong><span id="encounter-state"></span><p id="encounter-message"></p><small>Mova-se ou use Observar para voltar.</small></aside>
+    <aside id="field-note" hidden aria-label="Animal observado"><strong id="encounter-name"></strong><span id="encounter-state"></span><p id="encounter-message"></p><small id="photo-state"></small><small>Mova-se ou use Observar para voltar.</small></aside>
+    <div id="photo-flash" aria-hidden="true"></div>
+    <button id="shout" type="button" hidden>Afugentar</button>
     <p id="prompt" hidden></p>
     <div id="toasts" role="status" aria-live="polite"></div>
     <div id="threat-vignette" aria-hidden="true"></div>

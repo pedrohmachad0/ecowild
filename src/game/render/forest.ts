@@ -4,6 +4,7 @@ import {
   DynamicTexture,
   HemisphericLight,
   DirectionalLight,
+  PointLight,
   Mesh,
   MeshBuilder,
   Scene,
@@ -20,7 +21,8 @@ import {
 import { CONFIG } from "../config.ts";
 import { grassCount } from "../performance/quality.ts";
 import type { AppliedTier } from "../types.ts";
-import { rockList, treeList, props } from "../world/layout.ts";
+import { CAMP, NESTS, SPAWNS, rockList, treeList, props } from "../world/layout.ts";
+import { dayPeriod, daylight } from "../world/clock.ts";
 import { heightAt, pathDistance, shoreBlend } from "../world/terrain.ts";
 import { mulberry32 } from "../math.ts";
 
@@ -34,6 +36,9 @@ export type Forest = {
   sun: DirectionalLight;
   shadows: ShadowGenerator | null;
   setTier: (tier: AppliedTier) => void;
+  /** Day-cycle lighting; lantern follows the player at night. */
+  setTime: (dayF: number, player: { x: number; y: number; z: number }, time: number) => void;
+  setIncubator: (progress: number | null, time: number) => void;
 };
 
 function mat(scene: Scene, name: string, hex: string, emissive = "#000000"): StandardMaterial {
@@ -191,10 +196,34 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   const fruitMat = mat(scene, "fruit", "#c4493a", "#5a1c16");
   const glowBush = mat(scene, "glow-bush", "#246b58");
   const glowFruit = mat(scene, "glow-fruit", "#f0d48a", "#e3a23a");
+  const mossMat = mat(scene, "nest-moss", "#4f6b37");
+  const eggMat = mat(scene, "moss-egg", "#e8efd6", "#4a7a5a");
+  const dirtMat = mat(scene, "burrow-dirt", "#6b4d31");
+  const holeMat = mat(scene, "burrow-hole", "#1d140d");
+  for (const nest of NESTS) {
+    const ring = MeshBuilder.CreateTorus(nest.id, { diameter: 0.7, thickness: 0.22, tessellation: 14 }, scene);
+    ring.position.set(nest.x, heightAt(nest.x, nest.z) + 0.06, nest.z);
+    ring.material = mossMat; ring.isPickable = false; ring.freezeWorldMatrix();
+  }
+  for (const home of SPAWNS.armadillo) {
+    const mound = MeshBuilder.CreateSphere(home.id + "-mound", { diameterX: 1.3, diameterY: 0.35, diameterZ: 1.1, segments: 6 }, scene);
+    mound.position.set(home.x + 0.45, heightAt(home.x, home.z) + 0.02, home.z + 0.3);
+    mound.material = dirtMat; mound.isPickable = false; mound.freezeWorldMatrix();
+    const hole = MeshBuilder.CreateDisc(home.id + "-hole", { radius: 0.3, tessellation: 12 }, scene);
+    hole.rotation.x = Math.PI / 2;
+    hole.position.set(home.x, heightAt(home.x, home.z) + 0.04, home.z);
+    hole.material = holeMat; hole.isPickable = false; hole.freezeWorldMatrix();
+  }
   for (const prop of props()) {
     const root = new TransformNode(prop.id, scene);
     const h = heightAt(prop.x, prop.z);
     root.position.set(prop.x, h, prop.z);
+    if (prop.kind === "egg") {
+      const egg = MeshBuilder.CreateSphere(prop.id + "-egg", { diameterX: 0.2, diameterY: 0.27, diameterZ: 0.2, segments: 8 }, scene);
+      egg.parent = root; egg.position.y = 0.16; egg.material = eggMat; egg.isPickable = false;
+      propNodes.set(prop.id, root);
+      continue;
+    }
     const bush = MeshBuilder.CreateSphere(prop.id + "-b", { diameter: 0.7, segments: 6 }, scene);
     bush.parent = root;
     bush.position.y = 0.32;
@@ -207,6 +236,38 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
     fruit.isPickable = false;
     propNodes.set(prop.id, root);
   }
+
+  // Research camp: tent, campfire and the warmed nest used as incubator.
+  const campMats = { tent: mat(scene, "tent", "#b88a4a"), stone: mat(scene, "camp-stone", "#8a8378"), log: mat(scene, "camp-log", "#5a3a22"), flame: mat(scene, "flame", "#ffb347", "#ff8c1a") };
+  campMats.flame.disableLighting = true;
+  const tent = MeshBuilder.CreateCylinder("tent", { height: 1.5, diameterTop: 0, diameterBottom: 2.1, tessellation: 4 }, scene);
+  tent.position.set(CAMP.tent.x, heightAt(CAMP.tent.x, CAMP.tent.z) + 0.75, CAMP.tent.z);
+  tent.rotation.y = Math.PI / 4; tent.material = campMats.tent; tent.isPickable = false; tent.freezeWorldMatrix();
+  const fire = new TransformNode("campfire", scene);
+  fire.position.set(CAMP.x + 0.6, heightAt(CAMP.x + 0.6, CAMP.z - 1.6), CAMP.z - 1.6);
+  for (let i = 0; i < 7; i++) {
+    const a = i / 7 * Math.PI * 2;
+    const stone = MeshBuilder.CreateSphere("fire-stone", { diameter: 0.22, segments: 4 }, scene);
+    stone.parent = fire; stone.position.set(Math.cos(a) * 0.38, 0.06, Math.sin(a) * 0.38); stone.material = campMats.stone; stone.isPickable = false;
+  }
+  for (const r of [0.4, -0.4]) {
+    const log = MeshBuilder.CreateCylinder("fire-log", { height: 0.6, diameter: 0.1, tessellation: 5 }, scene);
+    log.parent = fire; log.rotation.set(Math.PI / 2, r, 0); log.position.y = 0.08; log.material = campMats.log; log.isPickable = false;
+  }
+  const flame = MeshBuilder.CreateCylinder("flame", { height: 0.45, diameterTop: 0, diameterBottom: 0.3, tessellation: 6 }, scene);
+  flame.parent = fire; flame.position.y = 0.3; flame.material = campMats.flame; flame.isPickable = false;
+  const incubator = new TransformNode("incubator", scene);
+  incubator.position.set(CAMP.incubator.x, heightAt(CAMP.incubator.x, CAMP.incubator.z), CAMP.incubator.z);
+  const warmNest = MeshBuilder.CreateTorus("warm-nest", { diameter: 0.6, thickness: 0.2, tessellation: 14 }, scene);
+  warmNest.parent = incubator; warmNest.position.y = 0.08; warmNest.material = mossMat; warmNest.isPickable = false;
+  for (let i = 0; i < 6; i++) {
+    const a = i / 6 * Math.PI * 2;
+    const stone = MeshBuilder.CreateSphere("nest-stone", { diameter: 0.2, segments: 4 }, scene);
+    stone.parent = incubator; stone.position.set(Math.cos(a) * 0.45, 0.07, Math.sin(a) * 0.45); stone.material = campMats.stone; stone.isPickable = false;
+  }
+  const warmingEgg = MeshBuilder.CreateSphere("warming-egg", { diameterX: 0.2, diameterY: 0.27, diameterZ: 0.2, segments: 8 }, scene);
+  warmingEgg.parent = incubator; warmingEgg.position.y = 0.18; warmingEgg.material = eggMat; warmingEgg.isPickable = false;
+  warmingEgg.setEnabled(false);
 
   const sign = new TransformNode("sign", scene);
   sign.position.set(1.4, heightAt(1.4, 16.2), 16.2);
@@ -282,6 +343,55 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   sun.diffuse = new Color3(1, 0.95, 0.84);
   sun.position = new Vector3(20, 30, -10);
 
+  // Lights for night play exist from the start so frozen materials compile with them.
+  const lantern = new PointLight("lantern", new Vector3(0, 2, 18), scene);
+  lantern.diffuse = new Color3(1, 0.82, 0.55); lantern.specular = Color3.Black(); lantern.range = 11; lantern.intensity = 0;
+  const campLight = new PointLight("camp-light", new Vector3(CAMP.x + 0.6, heightAt(CAMP.x, CAMP.z) + 1, CAMP.z - 1.6), scene);
+  campLight.diffuse = new Color3(1, 0.6, 0.3); campLight.specular = Color3.Black(); campLight.range = 9; campLight.intensity = 0.4;
+
+  // Fireflies: one merged emissive mesh around the lake and the grove, visible at night.
+  const fireflyMat = mat(scene, "firefly", "#f6ff9a", "#e8ff6a");
+  fireflyMat.disableLighting = true;
+  const flies: Mesh[] = [];
+  const frand = mulberry32(31);
+  for (let i = 0; i < 46; i++) {
+    const cx = i % 2 ? CONFIG.lakeX : -9, cz = i % 2 ? CONFIG.lakeZ : -7, a = frand() * Math.PI * 2, r = 4 + frand() * 6;
+    const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+    const fly = MeshBuilder.CreateSphere("firefly", { diameter: 0.06, segments: 2 }, scene);
+    fly.position.set(x, Math.max(heightAt(x, z), CONFIG.waterY) + 0.5 + frand() * 1.4, z);
+    flies.push(fly);
+  }
+  const fireflies = Mesh.MergeMeshes(flies, true, true)!;
+  fireflies.material = fireflyMat; fireflies.isPickable = false; fireflies.setEnabled(false);
+
+  const daySky = new Color3(0.55, 0.76, 0.84), nightSky = new Color3(0.05, 0.08, 0.16), duskSky = new Color3(0.86, 0.58, 0.44);
+  const dayHemi = new Color3(0.85, 0.92, 0.95), nightHemi = new Color3(0.32, 0.4, 0.62);
+  const tmp = new Color3();
+  const setTime = (dayF: number, player: { x: number; y: number; z: number }, time: number) => {
+    const light = daylight(dayF), period = dayPeriod(dayF);
+    const angle = (dayF - 0.25) * Math.PI * 2;
+    sun.direction.set(-Math.cos(angle) * 0.6, -Math.max(0.25, Math.sin(angle)), 0.3);
+    sun.intensity = 0.12 + 0.8 * light;
+    sun.diffuse.set(1, 0.78 + 0.17 * light, 0.6 + 0.24 * light);
+    hemi.intensity = 0.32 + 0.5 * light;
+    Color3.LerpToRef(nightHemi, dayHemi, light, hemi.diffuse);
+    Color3.LerpToRef(nightSky, daySky, light, tmp);
+    if (period === "dawn" || period === "dusk") Color3.LerpToRef(tmp, duskSky, 0.35 * (1 - Math.abs(light - 0.5) * 2), tmp);
+    scene.clearColor.set(tmp.r, tmp.g, tmp.b, 1);
+    scene.fogColor.set(tmp.r * 1.05, tmp.g * 1.03, tmp.b * 1.02);
+    const dark = 1 - light;
+    lantern.position.set(player.x, player.y + 2.1, player.z);
+    lantern.intensity = dark * 0.95;
+    campLight.intensity = 0.35 + dark * 0.9 + Math.sin(time * 9) * 0.06;
+    flame.scaling.y = 1 + Math.sin(time * 11) * 0.12;
+    fireflies.setEnabled(light < 0.3);
+    if (light < 0.3) fireflies.position.y = Math.sin(time * 0.8) * 0.25;
+  };
+  const setIncubator = (progress: number | null, time: number) => {
+    warmingEgg.setEnabled(progress !== null);
+    if (progress !== null) warmingEgg.rotation.z = progress > 0.75 ? Math.sin(time * 14) * 0.18 * (progress - 0.75) * 4 : 0;
+  };
+
   scene.clearColor = new Color4(0.55, 0.76, 0.84, 1);
   scene.fogMode = Scene.FOGMODE_EXP2;
   scene.fogDensity = 0.016;
@@ -300,6 +410,8 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
     sun,
     shadows: null,
     setTier: () => {},
+    setTime,
+    setIncubator,
   };
 
   const apply = (next: AppliedTier) => {

@@ -1,4 +1,4 @@
-import type { SaveV1 } from "../types.ts";
+import type { SaveData } from "../types.ts";
 import { migrateSave } from "./schema.ts";
 export { migrateSave, emptyDiscovery } from "./schema.ts";
 
@@ -7,9 +7,9 @@ const STORE = "slots";
 const REVISION = "revision";
 const TIMEOUT = 5000;
 export type SaveSlot = "primary" | "backup";
-export type LoadResult = { status: "loaded"; data: SaveV1 } | { status: "empty" | "invalid" | "unavailable"; data: null };
+export type LoadResult = { status: "loaded"; data: SaveData } | { status: "empty" | "invalid" | "unavailable"; data: null };
 export type SessionLoadResult = LoadResult & { revision: number | null; backup: LoadResult };
-export type MutationResult = { status: "saved"; revision: number; data: SaveV1; backup: LoadResult }
+export type MutationResult = { status: "saved"; revision: number; data: SaveData; backup: LoadResult }
   | { status: "conflict" | "unavailable" | "invalid" | "empty" };
 export type ExportResult = { status: "exported"; json: string } | { status: "empty" | "unavailable" | "unserializable" };
 
@@ -157,9 +157,9 @@ export class SaveSession {
     });
   }
 
-  write(data: SaveV1, backupPrevious = false): Promise<MutationResult> {
+  write(data: SaveData, backupPrevious = false): Promise<MutationResult> {
     // Capture before queuing, so later gameplay cannot mutate the pending save.
-    let snapshot: SaveV1;
+    let snapshot: SaveData;
     try {
       snapshot = structuredClone(data);
       if (!migrateSave(snapshot)) return Promise.resolve({ status: "invalid" });
@@ -168,8 +168,8 @@ export class SaveSession {
     return this.enqueue(() => this.mutate(snapshot, backupPrevious));
   }
 
-  restoreBackup(currentSession?: SaveV1): Promise<MutationResult> {
-    let preserved: SaveV1 | undefined;
+  restoreBackup(currentSession?: SaveData): Promise<MutationResult> {
+    let preserved: SaveData | undefined;
     try {
       if (currentSession) {
         preserved = structuredClone(currentSession);
@@ -180,7 +180,7 @@ export class SaveSession {
     return this.enqueue(() => this.mutate(null, false, preserved));
   }
 
-  private async mutate(snapshot: SaveV1 | null, backupPrevious: boolean, currentSession?: SaveV1): Promise<MutationResult> {
+  private async mutate(snapshot: SaveData | null, backupPrevious: boolean, currentSession?: SaveData): Promise<MutationResult> {
     if (this.conflicted) return { status: "conflict" };
     if (!this.expected) return { status: "unavailable" };
     try {
@@ -232,9 +232,9 @@ export async function loadSave(): Promise<LoadResult> {
   initialized = legacy.load();
   return initialized;
 }
-export async function writeSave(data: SaveV1, backupPrevious = false): Promise<boolean> {
+export async function writeSave(data: SaveData, backupPrevious = false): Promise<boolean> {
   // Preserve the original snapshot-at-call contract while initialization awaits IDB.
-  let snapshot: SaveV1;
+  let snapshot: SaveData;
   try { snapshot = structuredClone(data); } catch { return false; }
   initialized ??= legacy.load();
   await initialized;

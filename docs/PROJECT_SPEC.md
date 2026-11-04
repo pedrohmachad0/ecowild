@@ -107,4 +107,4 @@ Manifest, ícones, SW, offline e atualização já estão implementados no PR #4
 
 ## Fora do MVP
 
-Multiplayer, planeta completo, dezenas de biomas/espécies, economia, construção, montarias, genética, reprodução/ovos, fome/temperatura complexas, domesticação assistida e locomoção aérea/subterrânea do jogador. Permanecem na visão; não são recursos disponíveis.
+Multiplayer, planeta completo, dezenas de biomas/espécies, economia, construção, montarias, genética, reprodução de animais reais, fome/temperatura complexas e locomoção aérea/subterrânea do jogador. Permanecem na visão; não são recursos disponíveis. Ovos (só para o musgarim, criatura de fantasia) e domesticação assistida (musgarim com a Auryn) foram implementados em 04/11/2026; veja [EXPANSAO_2026-11-04](EXPANSAO_2026-11-04.md).

@@ -21,6 +21,9 @@ export type Stimulus = {
   preferIdle: boolean;
   /** Auryn's calm pulse: prey ignores the player, predators lose focus. */
   calmed?: boolean;
+  /** Outside the species' activity window (day cycle). */
+  inactive?: boolean;
+  homeDist?: number;
 };
 
 /**
@@ -47,6 +50,9 @@ export function decide(s: Stimulus): AiState {
   }
 
   if (s.calmed && (s.temperament === "territorial" || s.diet === "carnivore")) return s.preferIdle ? "IDLE" : "WANDER";
+
+  // Resting hours: go home and rest unless hunger or thirst becomes urgent.
+  if (s.inactive && s.hunger < 0.85 && s.thirst < 0.85) return (s.homeDist ?? 0) > 1.5 ? "RETURN_HOME" : "REST";
 
   if (s.temperament === "territorial" && s.inTerritory && s.playerDist < 8 && s.fear < 0.45) {
     return "DEFEND";

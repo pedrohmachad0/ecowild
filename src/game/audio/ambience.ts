@@ -1,4 +1,4 @@
-/** Procedural wind and sparse birds. Unlocks on the first gesture. No external audio files. */
+/** Procedural wind, birds by day, crickets and toads at night. Unlocks on the first gesture. No external audio files. */
 export class Ambience {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -41,14 +41,43 @@ export class Ambience {
     void ctx.resume();
   }
 
-  update(dt: number, active: boolean): void {
+  update(dt: number, active: boolean, period: "night" | "dawn" | "day" | "dusk" = "day"): void {
     if (!this.ctx || !this.master) return;
     this.master.gain.setTargetAtTime(active ? 0.18 : 0.04, this.ctx.currentTime, 0.3);
     this.timer -= dt;
     if (active && this.timer <= 0) {
-      this.timer = 2.5 + Math.random() * 4;
-      this.chirp();
+      if (period === "night") {
+        this.timer = 0.6 + Math.random() * 1.4;
+        if (Math.random() < 0.25) this.croak(); else this.cricket();
+      } else {
+        this.timer = period === "day" ? 2.5 + Math.random() * 4 : 1.2 + Math.random() * 2;
+        this.chirp();
+      }
     }
+  }
+
+  /** Short shutter click for photos. */
+  shutter(): void {
+    this.tone("square", 2200, 0.04, 0.05);
+    window.setTimeout(() => this.tone("square", 1600, 0.03, 0.04), 60);
+  }
+
+  private cricket(): void {
+    for (let i = 0; i < 3; i++) window.setTimeout(() => this.tone("sine", 4300 + Math.random() * 300, 0.03, 0.025), i * 70);
+  }
+
+  private croak(): void { this.tone("sawtooth", 140 + Math.random() * 40, 0.22, 0.05); }
+
+  private tone(type: OscillatorType, frequency: number, length: number, volume: number): void {
+    if (!this.ctx || !this.master) return;
+    const osc = this.ctx.createOscillator(), gain = this.ctx.createGain(), t = this.ctx.currentTime;
+    osc.type = type; osc.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(volume, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + length);
+    osc.connect(gain); gain.connect(this.master);
+    osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+    osc.start(t); osc.stop(t + length + 0.02);
   }
 
   suspend(): void {

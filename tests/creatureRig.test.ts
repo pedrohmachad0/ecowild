@@ -3,7 +3,7 @@ import { NullEngine, Scene, Vector3 } from "@babylonjs/core";
 import { animateRig, buildCreature } from "../src/game/render/actors.ts";
 import type { AiState, SpeciesId } from "../src/game/types.ts";
 
-const species: SpeciesId[] = ["capybara", "rabbit", "wolf", "eagle", "auryn"];
+const species: SpeciesId[] = ["capybara", "rabbit", "wolf", "eagle", "auryn", "armadillo", "toad", "fish", "tegu", "mosslight"];
 describe("modelos articulados da fauna", () => {
   it("constrói corpos finitos, apoios no chão e materiais compartilhados", () => {
     const engine = new NullEngine(), scene = new Scene(engine);
@@ -22,7 +22,7 @@ describe("modelos articulados da fauna", () => {
           triangles += mesh.getTotalIndices() / 3;
         }
         expect(triangles).toBeLessThan(8000);
-        if (id !== "eagle") { expect(low).toBeGreaterThan(-.03); expect(low).toBeLessThan(.05); }
+        if (id !== "eagle" && id !== "fish") { expect(low).toBeGreaterThan(-.03); expect(low).toBeLessThan(.05); }
       }
       const before = scene.materials.length;
       for (const id of species) buildCreature(scene, `${id}-second`, id);
