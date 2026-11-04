@@ -21,10 +21,10 @@ with sync_playwright() as p:
     tp = lambda x, z: page.evaluate("""async([x,z])=>{const {heightAt}=await import('/src/game/world/terrain.ts');const s=window.__controlsTest.getSim();s.player.x=x;s.player.z=z;s.player.y=heightAt(x,z);}""", [x, z])
     counts0 = page.evaluate('window.__controlsTest.getSceneCounts()')
 
-    # Ten species exist in the scene; the HUD clock starts in the morning.
-    assert hud()['species'] == 10
+    # Every registered species has a diary entry; the HUD clock starts in the morning.
+    assert hud()['species'] == len(hud()['catalog']) >= 14
     assert hud()['day']['period'] == 'day'
-    results['species'] = 10
+    results['species'] = hud()['species']
 
     # Egg: real E presses at the nest and at the warmed nest in the camp.
     page.evaluate("async()=>{const {NESTS}=await import('/src/game/world/layout.ts');window.__nest=NESTS[0];}")
@@ -67,7 +67,7 @@ with sync_playwright() as p:
     page.keyboard.press('c'); page.wait_for_selector('#sheet .photo')
     page.screenshot(path=str(out / 'diary-photo.png'))
     page.locator('[data-tab="challenges"]').click(); page.wait_for_selector('.challenge')
-    assert page.locator('.challenge').count() == 12
+    assert page.locator('.challenge').count() == len(hud()['challenges'])
     page.screenshot(path=str(out / 'challenges.png'))
     page.keyboard.press('c'); page.wait_for_function("window.__controlsTest.getHud().panel==='none'")
 
@@ -89,7 +89,21 @@ with sync_playwright() as p:
     page.wait_for_timeout(500)
     has_model = page.evaluate("window.__controlsTest.getSim().creatures.filter(c=>c.born).length>0 && window.__controlsTest.getSceneCounts().meshes > %d" % counts0['meshes'])
     assert has_model, 'hatchling has no rendered model after reload'
-    results['reload'] = 'Hatchling (with its own model), photo and challenges restored from IndexedDB save v2'
+    results['reload'] = 'Hatchling (with its own model), photo and challenges restored from the IndexedDB save'
+    # Travel: walk to the east exit, press E, save in the Vereda, reload and resume there.
+    page.evaluate("async()=>{const {region}=await import('/src/game/world/region.ts');window.__exit=region().exits[0];}")
+    exit_ = page.evaluate('window.__exit')
+    tp(exit_['x'] - 1, exit_['z']); page.wait_for_function("window.__controlsTest.getHud().prompt.includes('Trilha')")
+    page.keyboard.press('e'); page.wait_for_function("window.__controlsTest.getHud().place.id==='vereda'", timeout=30000)
+    page.wait_for_timeout(1500)
+    species_here = page.evaluate("[...new Set(window.__controlsTest.getSim().creatures.map(c=>c.speciesId))]")
+    assert 'anteater' in species_here and 'capybara' not in species_here
+    page.screenshot(path=str(out / 'vereda.png'))
+    page.keyboard.press('Escape'); page.locator('#save-now').click()
+    page.wait_for_function("window.__controlsTest.getHud().saveStatus==='Salvo neste aparelho.'")
+    page.reload(); page.locator('#resume').click(timeout=90000)
+    page.wait_for_function("window.__controlsTest.getHud().playing && window.__controlsTest.getHud().place.id==='vereda'", timeout=30000)
+    results['travel'] = 'E at the Mata exit loaded the Vereda (Cerrado fauna, no Mata fauna); save and reload resumed in the Vereda'
     counts1 = page.evaluate('window.__controlsTest.getSceneCounts()')
     results['scene_counts'] = {'start': counts0, 'after_reload': counts1}
     results['errors'] = errors

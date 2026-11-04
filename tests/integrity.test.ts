@@ -118,10 +118,10 @@ describe('mundo e fauna', () => {
 });
 
 describe('save e diário', () => {
-  test('v2 conserva progresso; versões futuras e payload estruturalmente inválido são recusados', () => {
+  test('v3 conserva progresso; versões futuras e payload estruturalmente inválido são recusados', () => {
     const save = toSave(createSim(null), settings);
     expect(migrateSave(save)).toMatchObject({ ...save, discoveries: {} });
-    for (const data of [null, [], {}, { ...save, version: 3 }, { ...save, version: undefined }, { ...save, player: {} }, { ...save, player: { ...save.player, x: NaN } }]) expect(migrateSave(data)).toBeNull();
+    for (const data of [null, [], {}, { ...save, version: 4 }, { ...save, version: undefined }, { ...save, player: {} }, { ...save, player: { ...save.player, x: NaN } }]) expect(migrateSave(data)).toBeNull();
   });
   test('campos limitados, IDs conhecidos e domesticação elegível', () => {
     const save = toSave(createSim(null), settings);

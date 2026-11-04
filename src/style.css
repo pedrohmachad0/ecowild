@@ -301,7 +301,7 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
 #hud-map .minimap { width: 100%; border: 1px solid var(--line); }
 .minimap.compact .mm-label, .minimap.compact .mm-tree, .minimap.compact .mm-rock { display: none; }
 #photo-flash { position: fixed; inset: 0; z-index: 25; pointer-events: none; background: #fff; opacity: 0; transition: opacity .15s; }
-#shout { position: fixed; z-index: 21; right: var(--safe-right); bottom: calc(var(--safe-bottom) + 128px); border-color: var(--danger); background: #7a2a1fe6; }
+#shout { position: fixed; z-index: 21; right: var(--safe-right); bottom: calc(var(--safe-bottom) + 176px); border-color: var(--danger); background: #7a2a1fe6; }
 @media (pointer: fine) { #shout { bottom: calc(var(--safe-bottom) + 52px); } }
 #menu #photo { border-color: var(--accent); background: #5a4a1ee6; }
 #field-note small { display: block; }
@@ -313,3 +313,14 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
 .mm-camp { fill: #b88a4a; stroke: #f4efe4; stroke-width: .3; }
 .mm-key-egg { background: #e8efd6; border: 1px solid #6fe0c9; }
 .mm-key-camp { background: #b88a4a; border-radius: 3px !important; }
+.mm-mound { fill: #a8683e; stroke: #5a3a22; stroke-width: .3; }
+.mm-wolfapple { fill: #9fc25a; stroke: #4a6a2a; stroke-width: .3; }
+.mm-exit { fill: var(--accent); stroke: #0b1c16; stroke-width: .4; }
+.mm-ground.mm-vereda { fill: #8a7d3e; }
+.mm-key-exit { background: var(--accent); clip-path: polygon(0 0, 100% 50%, 0 100%); border-radius: 0 !important; }
+.item-icon.wolfapple { background: radial-gradient(circle at 35% 35%, #d8ef9a, #8fbf4a 55%, #4a6a2a); }
+#ability-row { position: absolute; right: var(--safe-right); bottom: calc(var(--safe-bottom) + 120px); display: flex; gap: 8px; pointer-events: auto; }
+#ability-row .ability { min-height: 44px; min-width: 80px; font-size: 12px; background: #1d4f63e6; border-color: #6fe0c9; }
+@media (max-height: 430px) { #ability-row { bottom: calc(var(--safe-bottom) + 114px); } }
+.mm-key-wolfapple { background: #9fc25a; }
+@media (max-height: 430px) { .chip-region { display: none; } }

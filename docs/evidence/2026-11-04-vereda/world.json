@@ -1,0 +1,20 @@
+{
+  "species": 14,
+  "egg": "Collected at nest with E, placed in warmed nest with E, hatchling joins as companion",
+  "night": "Clock reached night; at least one armadillo left its burrow",
+  "photo": "JPEG data URL of 3783 chars stored in the diary",
+  "shout": "G raised wolf fear above 0.9 and spent energy",
+  "reload": "Hatchling (with its own model), photo and challenges restored from IndexedDB save v2",
+  "travel": "E at the Mata exit loaded the Vereda (Cerrado fauna, no Mata fauna); save and reload resumed in the Vereda",
+  "scene_counts": {
+    "start": {
+      "meshes": 250,
+      "materials": 39
+    },
+    "after_reload": {
+      "meshes": 250,
+      "materials": 39
+    }
+  },
+  "errors": []
+}

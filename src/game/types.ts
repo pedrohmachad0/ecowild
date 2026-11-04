@@ -1,3 +1,5 @@
+import type { RegionId } from "./world/region.ts";
+
 export type SpeciesId =
   | "capybara"
   | "rabbit"
@@ -8,7 +10,11 @@ export type SpeciesId =
   | "toad"
   | "fish"
   | "tegu"
-  | "mosslight";
+  | "mosslight"
+  | "anteater"
+  | "seriema"
+  | "manedwolf"
+  | "brasalume";
 
 export type AiState =
   | "IDLE"
@@ -63,6 +69,8 @@ export type SavedCreature = {
   x: number; z: number; hunger: number; thirst: number; fear: number; energy: number; trust: number; tamed: boolean;
   /** Present only for creatures born in play (hatchlings), which have no spawn entry. */
   speciesId?: SpeciesId;
+  /** Present when the creature is not in its home region (travelling companions, hatchlings). */
+  region?: RegionId;
 };
 
 export type SavedPet = { id: string; speciesId: SpeciesId; name: string; xp: number; command: PetCommand };
@@ -86,4 +94,12 @@ export type SaveV2 = {
   seconds: number;
 };
 
-export type SaveData = SaveV2;
+/** v3: regions. Adds the active region, visited regions and the wolf-apple item. */
+export type SaveV3 = Omit<SaveV2, "version" | "inventory"> & {
+  version: 3;
+  region: RegionId;
+  visited: RegionId[];
+  inventory: { glowfruit: number; berries: number; eggs: number; wolfapple: number };
+};
+
+export type SaveData = SaveV3;

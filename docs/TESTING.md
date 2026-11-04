@@ -54,7 +54,9 @@ Com o Vite dev em `4173`:
 EVIDENCE_DIR=/tmp/ecowild-world python scripts/world-check.py
 ```
 
-Com fixtures declaradas (teletransporte, relógio, adiantar a incubação) e teclas reais: ovo no ninho (E), ninho aquecido (E), nascimento do filhote com modelo, noite com tatu fora da toca, Observar + Fotografar (Q/P), diário com foto e 12 desafios, afugentar (G) e recarga com filhote, foto e desafios restaurados do save v2. Testes unitários em `tests/livingWorld.test.ts` (dia/noite, linha de visão, lambari, domesticação assistida completa, ovo → filhote → save, migração v1 → v2, fotos, afugentar, desafios) e `tests/panels.test.ts` (acentos e escape de HTML).
+Com fixtures declaradas (teletransporte, relógio, adiantar a incubação) e teclas reais (inclui viagem pela saída leste com E, gravação e recarga já na Vereda): ovo no ninho (E), ninho aquecido (E), nascimento do filhote com modelo, noite com tatu fora da toca, Observar + Fotografar (Q/P), diário com foto e 12 desafios, afugentar (G) e recarga com filhote, foto e desafios restaurados do save v2. Testes unitários em `tests/livingWorld.test.ts` (dia/noite, linha de visão, lambari, domesticação assistida completa, ovo → filhote → save, migração v1 → v2, fotos, afugentar, desafios) e `tests/panels.test.ts` (acentos e escape de HTML).
+
+`tests/regions.test.ts` aplica o contrato de região a todas as regiões registradas e testa viagem, companheiros, fruta-do-lobo, migração v2 → v3, tamanduá, lobo-guará e brasalume.
 
 ## Regressões unitárias
 

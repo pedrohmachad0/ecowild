@@ -140,8 +140,8 @@ test("tamed Auryn follows and save round-trips", () => {
     pet: { name: "Luz", xp: 10, command: "STAY" },
   });
   assert.ok(blob);
-  // v1 is migrated in memory to v2: the single Auryn pet becomes a pets[] entry.
-  assert.equal(blob.version, 2);
+  // v1 is migrated in memory to the current schema: the single Auryn pet becomes a pets[] entry.
+  assert.equal(blob.version, 3);
   assert.equal(blob.pets[0]?.name, "Luz");
   assert.equal(blob.pets[0]?.command, "STAY");
   assert.equal(blob.inventory.eggs, 0);

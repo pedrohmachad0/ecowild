@@ -13,7 +13,9 @@ function hud(panel: HudSnapshot['panel']): HudSnapshot {
   const catalog = catalogView(sim.discoveries);
   return {
     panel, catalog, discovered: 1, species: catalog.length, photos: {}, challenges: challengeViews(sim), pets: petViews(sim),
-    inventory: { glowfruit: 0, berries: 1, eggs: 1 }, incubator: 0.4, abilities: { near: true, track: 0, calm: 0 },
+    inventory: { glowfruit: 0, berries: 1, eggs: 1, wolfapple: 2 }, visited: ['mata', 'vereda'],
+    regions: [{ id: 'mata', name: 'Mata da Nascente' }, { id: 'vereda', name: 'Vereda do Cerrado' }],
+    place: { id: 'mata', name: 'Mata da Nascente', biome: 'Floresta', guide: 'Siga a trilha.', territory: true, nests: true }, incubator: 0.4, abilities: { near: true, track: 0, calm: 0 },
     quality: 'auto', tier: 'low', lookSens: .0045, deadzone: .16, camera: 'third', hudMap: true, saveStatus: 'ok',
     day: { clock: '07:10', period: 'day', label: 'Dia', fraction: .3 }, track: null, map: [], props: [], player: { x: 0, z: 18 }, yaw: 0,
   } as unknown as HudSnapshot;
@@ -35,5 +37,7 @@ describe('painéis', () => {
     expect(panelHtml(hud('catalog'), { catalogFilter: 'all', touch: false, tab: 'challenges' })).toContain('Primeiros registros');
     expect(panelHtml(hud('inventory'))).toContain('No ninho: 40%');
     expect(panelHtml(hud('map'))).toContain('<svg');
+    expect(panelHtml(hud('map'))).toContain('Guia · Mata da Nascente');
+    expect(panelHtml(hud('inventory'))).toContain('Fruta-do-lobo');
   });
 });

@@ -21,6 +21,7 @@ let lastSheet = "", panelOpen = false, touchActive = false;
 let catalogFilter: CatalogFilter = "all";
 let catalogGroup: BioGroup | "all" = "all";
 let diaryTab: DiaryTab = "entries";
+let catalogPlace = "all";
 let hudMapAcc = 0;
 let returnFocus: HTMLElement | null = null;
 const lifecycle = new AbortController();
@@ -47,6 +48,8 @@ on("#camera", "click", () => game.setHold("camera", true));
 on("#observe", "click", () => game.toggleObservation());
 on("#photo", "click", () => game.takePhoto());
 on("#shout", "click", () => game.setHold("shout", true));
+on("#ability-track", "click", () => game.petAbility("TRACK"));
+on("#ability-calm", "click", () => game.petAbility("CALM"));
 on("#retry", "click", () => location.reload());
 for (const id of ["catalog", "inventory", "map", "pause"] as const) on("#open-" + id, "click", () => game.open(id));
 on("#close-sheet", "click", () => game.open("none"));
@@ -96,6 +99,15 @@ function render(hud: HudSnapshot): void {
   must("#photo").textContent = coarse() ? "Fotografar" : "Fotografar (P)";
   must("#photo-state").textContent = encounter?.photographed ? "Já fotografado: P substitui a foto." : "P ou Fotografar: guardar uma foto no diário.";
   must("#photo-flash").style.opacity = String(Math.min(0.8, hud.flash * 2.4));
+  const abilityRow = must("#ability-row");
+  abilityRow.hidden = !(touchActive && hud.abilities);
+  if (hud.abilities) {
+    const track = must<HTMLButtonElement>("#ability-track"), calm = must<HTMLButtonElement>("#ability-calm");
+    track.disabled = !hud.abilities.near || hud.abilities.track > 0;
+    calm.disabled = !hud.abilities.near || hud.abilities.calm > 0;
+    track.textContent = hud.abilities.track > 0 ? `Farejar ${Math.ceil(hud.abilities.track)}s` : "Farejar";
+    calm.textContent = hud.abilities.calm > 0 ? `Pulso ${Math.ceil(hud.abilities.calm)}s` : "Pulso calmo";
+  }
   const shoutButton = must<HTMLButtonElement>("#shout");
   shoutButton.hidden = !(hud.playing && hud.panel === "none" && hud.threat > 0.05);
   shoutButton.disabled = !hud.shoutReady;
@@ -116,13 +128,13 @@ function render(hud: HudSnapshot): void {
     if (!open) returnFocus?.focus();
   }
   const abilities = hud.abilities ? [hud.abilities.near, Math.ceil(hud.abilities.track), Math.ceil(hud.abilities.calm)].join(",") : "";
-  const sig = [hud.panel, catalogFilter, catalogGroup, diaryTab, hud.pets.map(p => p.name + p.command + p.level + p.near).join(","), hud.challenges.filter(c => c.done).length, Object.keys(hud.photos).length, hud.inventory.eggs, hud.incubator === null ? "" : Math.floor(hud.incubator * 20), hud.hudMap, hud.inventory.berries, hud.inventory.glowfruit, hud.pet?.name, hud.pet?.command, hud.catalog.map(c => c.progress).join(","), hud.quality, hud.tier, hud.camera, abilities, hud.track?.label].join("|");
+  const sig = [hud.panel, catalogFilter, catalogGroup, catalogPlace, diaryTab, hud.place.id, hud.inventory.wolfapple, hud.pets.map(p => p.away).join(","), hud.pets.map(p => p.name + p.command + p.level + p.near).join(","), hud.challenges.filter(c => c.done).length, Object.keys(hud.photos).length, hud.inventory.eggs, hud.incubator === null ? "" : Math.floor(hud.incubator * 20), hud.hudMap, hud.inventory.berries, hud.inventory.glowfruit, hud.pet?.name, hud.pet?.command, hud.catalog.map(c => c.progress).join(","), hud.quality, hud.tier, hud.camera, abilities, hud.track?.label].join("|");
   sheet.hidden = !open;
   if (sig !== lastSheet) {
     lastSheet = sig;
     const focusedId = (document.activeElement as HTMLElement)?.id;
     must("#title").append(pwaInfo);
-    sheet.querySelector<HTMLElement>("[data-body]")!.innerHTML = panelHtml(hud, { catalogFilter, touch: coarse(), group: catalogGroup, tab: diaryTab });
+    sheet.querySelector<HTMLElement>("[data-body]")!.innerHTML = panelHtml(hud, { catalogFilter, touch: coarse(), group: catalogGroup, tab: diaryTab, place: catalogPlace });
     sheet.dataset.panel = hud.panel;
     if (hud.panel === "pause") sheet.append(pwaInfo);
     wireSheet();
@@ -144,6 +156,9 @@ function wireSheet(): void {
   sheet.querySelector<HTMLInputElement>("#hud-map-toggle")?.addEventListener("change", e => game.setHudMap((e.target as HTMLInputElement).checked));
   sheet.querySelectorAll<HTMLButtonElement>("[data-group]").forEach(button => button.addEventListener("click", () => {
     catalogGroup = button.dataset.group as BioGroup | "all"; lastSheet = ""; game.refreshHud();
+  }));
+  sheet.querySelectorAll<HTMLButtonElement>("[data-place]").forEach(button => button.addEventListener("click", () => {
+    catalogPlace = button.dataset.place!; lastSheet = ""; game.refreshHud();
   }));
   sheet.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(button => button.addEventListener("click", () => {
     diaryTab = button.dataset.tab as DiaryTab; lastSheet = ""; game.refreshHud();
@@ -175,7 +190,12 @@ function renderVitals(hud: HudSnapshot): void {
   setMeter(meters.energy, hud.energy, "Energia");
   setMeter(meters.water, 100 - hud.thirst, "Água");
   must("#journal-chip").textContent = `Diário ${hud.discovered}/${hud.species}`;
-  must("#clock-chip").textContent = `${hud.day.label} · ${hud.day.clock}`;
+  const clock = must("#clock-chip"), clockText = `${hud.place.name}|${hud.day.label} ${hud.day.clock}`;
+  if (clock.dataset.text !== clockText) {
+    clock.dataset.text = clockText;
+    const place = document.createElement("span"); place.className = "chip-region"; place.textContent = `${hud.place.name} · `;
+    clock.replaceChildren(place, `${hud.day.label} ${hud.day.clock}`);
+  }
   must("#clock-chip").dataset.period = hud.day.period;
   const eggChip = must("#egg-chip");
   eggChip.hidden = hud.incubator === null && !hud.inventory.eggs;

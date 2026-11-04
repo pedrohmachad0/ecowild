@@ -30,7 +30,7 @@ describe('visão fundadora: classificação multidimensional', () => {
       if (s.reproduction === 'fantasy-egg') expect(s.scientific).toBeNull();
     }
     expect(SPECIES.find(s => s.id === 'eagle')!.reproduction).toBe('oviparous');
-    expect(SPECIES.filter(s => s.domesticable).map(s => s.id).sort()).toEqual(['auryn', 'mosslight']);
+    expect(SPECIES.filter(s => s.domesticable).map(s => s.id).sort()).toEqual(['auryn', 'brasalume', 'mosslight']);
   });
 });
 
@@ -157,13 +157,13 @@ describe('ovos, incubação e nascimento', () => {
   });
 });
 
-describe('save v2 e migração', () => {
-  test('v1 publicado vira v2 sem perder companheira, itens e descobertas', () => {
+describe('save v3 e migração', () => {
+  test('v1 publicado vira v3 sem perder companheira, itens e descobertas', () => {
     const v1 = { version: 1, player: { x: 1, y: 0, z: 15, yaw: 0, health: 90, energy: 80, thirst: 10 }, inventory: { glowfruit: 2, berries: 3 }, picked: { 'glow-0': true }, discoveries: { auryn: { seen: true, habitat: true, behavior: true, interacted: true } }, pet: { name: 'Luz', xp: 50, command: 'PROTECT' }, creatures: { [SPAWNS.auryn.id]: { x: 0, z: 14, hunger: .2, thirst: .2, fear: 0, energy: 1, trust: 100, tamed: true } }, settings: { quality: 'auto', lookSens: .0045 }, seconds: 300 };
     const v2 = migrateSave(v1)!;
-    expect(v2.version).toBe(2);
+    expect(v2.version).toBe(3); expect(v2.region).toBe('mata');
     expect(v2.pets).toEqual([{ id: SPAWNS.auryn.id, speciesId: 'auryn', name: 'Luz', xp: 50, command: 'PROTECT' }]);
-    expect(v2.inventory).toEqual({ glowfruit: 2, berries: 3, eggs: 0 });
+    expect(v2.inventory).toEqual({ glowfruit: 2, berries: 3, eggs: 0, wolfapple: 0 });
     expect(v2.picked['glow-0']).toBe(true);
     const sim = createSim(v2);
     expect(sim.creatures.find(c => c.speciesId === 'auryn')).toMatchObject({ tamed: true, name: 'Luz', command: 'PROTECT' });

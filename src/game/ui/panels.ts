@@ -2,7 +2,7 @@ import type { HudSnapshot } from "../EcoWildGame.ts";
 import type { CatalogEntry } from "../catalog/discoveries.ts";
 import type { PetCommand } from "../types.ts";
 import { minimapSvg, SPECIES_COLOR } from "./minimap.ts";
-import { GROUP_LABEL } from "../data/species.ts";
+import { GROUP_LABEL, SPECIES_BY_ID } from "../data/species.ts";
 import type { BioGroup } from "../data/species.ts";
 import type { SpeciesId } from "../types.ts";
 
@@ -11,7 +11,7 @@ const escape = (text: string) => text.replace(/[&<>"']/g, c => ({ "&": "&amp;", 
 
 export type CatalogFilter = "all" | "known" | "pending";
 export type DiaryTab = "entries" | "challenges";
-export type PanelOptions = { catalogFilter: CatalogFilter; touch: boolean; group?: BioGroup | "all"; tab?: DiaryTab };
+export type PanelOptions = { catalogFilter: CatalogFilter; touch: boolean; group?: BioGroup | "all"; tab?: DiaryTab; place?: string };
 
 export const TIER_LABEL: Record<string, string> = { low: "baixa", medium: "média", high: "alta" };
 export const COMMAND_LABEL: Record<PetCommand, string> = { FOLLOW: "Seguir", STAY: "Esperar", PROTECT: "Proteger", RETURN: "Voltar" };
@@ -23,7 +23,7 @@ const COMMAND_HELP: Record<PetCommand, string> = {
 };
 
 export function panelHtml(hud: HudSnapshot, options: PanelOptions = { catalogFilter: "all", touch: false }): string {
-  if (hud.panel === "catalog") return options.tab === "challenges" ? challengesHtml(hud) : catalogHtml(hud, options.catalogFilter, options.group ?? "all");
+  if (hud.panel === "catalog") return options.tab === "challenges" ? challengesHtml(hud) : catalogHtml(hud, options.catalogFilter, options.group ?? "all", options.place ?? "all");
   if (hud.panel === "inventory") return inventoryHtml(hud);
   if (hud.panel === "map") return mapHtml(hud);
   if (hud.panel === "pause") return pauseHtml(hud, options.touch);
@@ -35,17 +35,19 @@ function diaryTabs(tab: DiaryTab, hud: HudSnapshot): string {
   return `<div class="tabs" role="tablist" aria-label="Seções do diário"><button type="button" role="tab" data-tab="entries" aria-selected="${tab === "entries"}" aria-pressed="${tab === "entries"}">Fichas ${hud.discovered}/${hud.species}</button><button type="button" role="tab" data-tab="challenges" aria-selected="${tab === "challenges"}" aria-pressed="${tab === "challenges"}">Desafios ${done}/${hud.challenges.length}</button></div>`;
 }
 
-function catalogHtml(hud: HudSnapshot, filter: CatalogFilter, group: BioGroup | "all"): string {
+function catalogHtml(hud: HudSnapshot, filter: CatalogFilter, group: BioGroup | "all", place: string): string {
   const filters: [CatalogFilter, string][] = [["all", "Todas"], ["known", "Registradas"], ["pending", "Pesquisa pendente"]];
   const groups: (BioGroup | "all")[] = ["all", "mammal", "bird", "reptile", "amphibian", "fish", "fantasy"];
   const list = hud.catalog
     .filter(item => filter === "all" || (filter === "known" ? item.known : item.progress < 100))
-    .filter(item => group === "all" || item.group === group);
+    .filter(item => group === "all" || item.group === group)
+    .filter(item => place === "all" || item.regionIds.includes(place));
   const research = Math.round(hud.catalog.reduce((sum, item) => sum + item.progress, 0) / Math.max(1, hud.catalog.length));
   return `<h2 id="panel-title">Diário de campo</h2>${diaryTabs("entries", hud)}
     <p class="lede">${hud.discovered} de ${hud.species} espécies registradas · pesquisa geral ${research}% · ${Object.keys(hud.photos).length} foto(s). Fichas separam biologia real de fantasia; esta mata imaginária reúne espécies de regiões diferentes.</p>
     <div class="filters" role="group" aria-label="Filtrar fichas">${filters.map(([id, label]) => `<button type="button" class="chip-button" data-filter="${id}" aria-pressed="${filter === id}">${label}</button>`).join("")}</div>
     <div class="filters" role="group" aria-label="Filtrar por grupo biológico">${groups.map(id => `<button type="button" class="chip-button" data-group="${id}" aria-pressed="${group === id}">${id === "all" ? "Todos os grupos" : GROUP_LABEL[id]}</button>`).join("")}</div>
+    <div class="filters" role="group" aria-label="Filtrar por região">${[["all", "Todas as regiões"], ...hud.regions.map(r => [r.id, r.name])].map(([id, label]) => `<button type="button" class="chip-button" data-place="${id}" aria-pressed="${place === id}">${escape(label!)}</button>`).join("")}</div>
     <div class="entries">${list.map(item => entryHtml(item, hud.photos[item.id])).join("") || `<p class="empty">Nenhuma ficha neste filtro.</p>`}</div>`;
 }
 
@@ -72,7 +74,7 @@ function entryHtml(item: CatalogEntry, photo?: string): string {
     <p class="sci">${escape(item.biological)}${item.scientific ? ` · <i>${escape(item.scientific)}</i>` : ""}${item.domesticable ? ` · <strong>pode criar vínculo</strong>` : ""}</p>
     <div class="entry-body">${picture}<div><p>${escape(item.summary)}</p>
     <ul class="chips">${chips.map(chip => `<li>${escape(chip)}</li>`).join("")}</ul>
-    <dl><dt>Habitat</dt><dd>${escape(item.habitat)}</dd>${item.flags.behavior ? `<dt>Temperamento</dt><dd>${escape(item.temperamentLabel)}</dd><dt>Curiosidade</dt><dd>${escape(item.curiosity)}</dd>` : ""}${item.flags.behavior ? `<dt>Reprodução</dt><dd>${escape(item.reproduction)}</dd>` : ""}${item.abilities.length ? `<dt>Habilidades</dt><dd>${item.abilities.map(escape).join(", ")}</dd>` : ""}</dl></div></div>
+    <dl><dt>Habitat</dt><dd>${escape(item.habitat)}</dd>${item.regions.length ? `<dt>Onde vive</dt><dd>${item.regions.map(escape).join(", ")}</dd>` : ""}${item.flags.behavior ? `<dt>Temperamento</dt><dd>${escape(item.temperamentLabel)}</dd><dt>Curiosidade</dt><dd>${escape(item.curiosity)}</dd>` : ""}${item.flags.behavior ? `<dt>Reprodução</dt><dd>${escape(item.reproduction)}</dd>` : ""}${item.abilities.length ? `<dt>Habilidades</dt><dd>${item.abilities.map(escape).join(", ")}</dd>` : ""}</dl></div></div>
     ${bar}${stepList}${next ? `<p class="next">Próximo passo: ${next}</p>` : ""}</article>`;
 }
 
@@ -82,15 +84,24 @@ function inventoryHtml(hud: HudSnapshot): string {
   return `<h2 id="panel-title">Bolsa</h2><div class="items">
     ${item("glow", "Frutiluz", hud.inventory.glowfruit, "Colhido no bosque do orvalho, a noroeste do lago. Ofereça à Auryn depois de observá-la parada e conquistar confiança 58.")}
     ${item("berry", "Fruto da mata", hud.inventory.berries, "Colhido nos arbustos. Recupera energia, vida e um pouco de sede. O musgarim também aceita, quando está calmo.", `<button type="button" id="eat-berry" ${hud.inventory.berries ? "" : "disabled"}>Comer fruto</button>`)}
+    ${hud.inventory.wolfapple || hud.visited.includes("vereda") ? item("wolfapple", "Fruta-do-lobo", hud.inventory.wolfapple, "Fruto da lobeira (<i>Solanum lycocarpum</i>), colhido na Vereda. Alimento do lobo-guará e oferta para o brasalume.") : ""}
     ${hud.inventory.eggs || hud.incubator !== null ? `<article class="item"><span class="item-icon egg" aria-hidden="true"></span><div><h3>Ovo de musgarim <span class="count">${hud.inventory.eggs}/2</span></h3><p>Regra de fantasia: leve ao ninho aquecido do acampamento, ao sul. Choca mais rápido com o calor do dia.${hud.incubator !== null ? ` <strong>No ninho: ${Math.floor(hud.incubator * 100)}%.</strong>` : ""}</p></div></article>` : ""}
   </div>`;
 }
 
 function mapHtml(hud: HudSnapshot): string {
-  const legend = [["mm-key-player", "Você"], ["mm-key-glow", "Frutiluz"], ["mm-key-berry", "Fruto da mata"], ["mm-key-track", "Rastro da companheira"], ["mm-key-danger", "Território dos lobos"], ["mm-key-egg", "Ninho de musgo"], ["mm-key-camp", "Acampamento"]];
-  return `<h2 id="panel-title">Guia da mata</h2>
+  const kinds = new Set(hud.props.map(p => p.kind));
+  const legend = [["mm-key-player", "Você"],
+    ...(kinds.has("glow") ? [["mm-key-glow", "Frutiluz"]] : []),
+    ...(kinds.has("berry") ? [["mm-key-berry", "Fruto da mata"]] : []),
+    ...(kinds.has("wolfapple") ? [["mm-key-wolfapple", "Lobeira (fruta-do-lobo)"]] : []),
+    ["mm-key-track", "Rastro da companheira"],
+    ...(hud.place.territory ? [["mm-key-danger", "Território dos lobos"]] : []),
+    ...(hud.place.nests ? [["mm-key-egg", "Ninho de musgo"]] : []),
+    ["mm-key-camp", "Acampamento / posto"], ["mm-key-exit", "Trilha para outra região"]];
+  return `<h2 id="panel-title">Guia · ${escape(hud.place.name)}</h2>
     <div class="map-layout">${minimapSvg(hud)}
-      <div><p>Norte no alto. Da clareira, a trilha sobe ao <strong>lago, ao norte</strong>, e segue até o <strong>bosque do orvalho, a noroeste do lago</strong>: ali estão frutiluz e a Auryn. Os lobos guardam o bosque fechado mais a noroeste; observe de longe. Ao norte, entre raízes, vivem os musgarins. Tatus cavam tocas nos barrancos a leste. O acampamento, ao sul, tem o ninho aquecido.</p>
+      <div><p class="muted">${escape(hud.place.biome)}. Norte no alto.</p><p>${escape(hud.place.guide)}</p>
       <p>Só aparecem no mapa os animais já registrados no diário.</p>
       <ul class="legend">${legend.map(([cls, label]) => `<li><span class="${cls}" aria-hidden="true"></span>${label}</li>`).join("")}</ul>
       ${hud.track ? `<p class="next">Rastro atual: ${escape(hud.track.label)}.</p>` : ""}</div>
@@ -100,14 +111,14 @@ function mapHtml(hud: HudSnapshot): string {
 function pauseHtml(hud: HudSnapshot, touch: boolean): string {
   const ab = hud.abilities;
   const cooldown = (sec: number) => sec > 0 ? ` (${Math.ceil(sec)} s)` : "";
-  const command = hud.pets[0]?.command ?? "FOLLOW";
+  const command = hud.pets.find(p => !p.away)?.command ?? "FOLLOW";
   const hasAuryn = hud.pets.some(p => p.speciesId === "auryn");
   const list = hud.pets.map((pet, i) => {
     const suffix = i ? `-${i}` : "";
-    return `<li class="pet-row"><span class="swatch" style="--swatch:${SPECIES_COLOR[pet.speciesId] ?? "#ccc"}" aria-hidden="true"></span><div class="field"><label for="pet-name${suffix}"><strong>${escape(pet.name)}</strong> <span class="muted">${escape(speciesLabel(pet.speciesId))} · nível ${pet.level}${pet.near ? "" : " · longe"}</span></label><input id="pet-name${suffix}" maxlength="16" value="${escape(pet.name)}"><button id="rename-pet${suffix}" type="button" data-rename="${escape(pet.id)}" data-input="pet-name${suffix}">Salvar nome</button></div></li>`;
+    return `<li class="pet-row"><span class="swatch" style="--swatch:${SPECIES_COLOR[pet.speciesId] ?? "#ccc"}" aria-hidden="true"></span><div class="field"><label for="pet-name${suffix}"><strong>${escape(pet.name)}</strong> <span class="muted">${escape(speciesLabel(pet.speciesId))} · nível ${pet.level}${pet.away ? ` · esperando em ${escape(pet.away)}` : pet.near ? "" : " · longe"}</span></label><input id="pet-name${suffix}" maxlength="16" value="${escape(pet.name)}"><button id="rename-pet${suffix}" type="button" data-rename="${escape(pet.id)}" data-input="pet-name${suffix}">Salvar nome</button></div></li>`;
   }).join("");
   const companion = hud.pets.length ? `<section class="group"><h3>Companheiros <span class="muted">${hud.pets.length}</span></h3>
-    <p>Agora: <strong>${COMMAND_LABEL[command]}</strong> — ${COMMAND_HELP[command]}. Comandos valem para todos.</p>
+    <p>Agora: <strong>${COMMAND_LABEL[command]}</strong> — ${COMMAND_HELP[command]}. Comandos valem para todos nesta região.</p>
     <div class="button-row" role="group" aria-label="Comandos">${(["FOLLOW", "STAY", "PROTECT", "RETURN"] as const).map((cmd, i) => `<button type="button" data-pet="${cmd}" aria-pressed="${command === cmd}">${touch ? "" : `<kbd>${i + 1}</kbd> `}${COMMAND_LABEL[cmd]}</button>`).join("")}</div>
     ${hasAuryn ? `<p class="muted">Habilidades da Auryn exigem que ela esteja a menos de 6 m${ab && !ab.near ? " — <strong>ela está longe agora</strong>" : ""}.</p>
     <div class="button-row" role="group" aria-label="Habilidades"><button type="button" data-ability="TRACK" ${ab?.near && ab.track <= 0 ? "" : "disabled"}>${touch ? "" : "<kbd>5</kbd> "}Farejar rastro${cooldown(ab?.track ?? 0)}</button><button type="button" data-ability="CALM" ${ab?.near && ab.calm <= 0 ? "" : "disabled"}>${touch ? "" : "<kbd>6</kbd> "}Pulso calmo${cooldown(ab?.calm ?? 0)}</button></div>
@@ -131,5 +142,4 @@ function pauseHtml(hud: HudSnapshot, touch: boolean): string {
     <div class="button-row"><button type="button" id="save-now">Gravar agora</button><button type="button" id="manage-progress-pause">Progresso / backup</button></div></section>`;
 }
 
-const SPECIES_NAMES: Partial<Record<SpeciesId, string>> = { auryn: "Auryn", mosslight: "Musgarim" };
-function speciesLabel(id: SpeciesId): string { return SPECIES_NAMES[id] ?? id; }
+function speciesLabel(id: SpeciesId): string { return SPECIES_BY_ID[id].name; }

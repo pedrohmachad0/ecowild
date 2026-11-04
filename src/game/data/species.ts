@@ -1,4 +1,5 @@
 import type { ActiveWindow, Diet, SpeciesId, Temperament } from "../types.ts";
+import type { RegionId } from "../world/region.ts";
 
 export type BioGroup = "mammal" | "bird" | "reptile" | "amphibian" | "fish" | "fantasy";
 export const GROUP_LABEL: Record<BioGroup, string> = { mammal: "Mamíferos", bird: "Aves", reptile: "Répteis", amphibian: "Anfíbios", fish: "Peixes", fantasy: "Fantasia" };
@@ -38,7 +39,34 @@ export type SpeciesProfile = {
   /** bond: calm presence + offering; assisted: only while a companion keeps it calm; none: wild only. */
   tameMethod: "bond" | "assisted" | "none";
   /** What it accepts as an offering when tameMethod is not none. */
-  offering: "glowfruit" | "berries" | null;
+  offering: "glowfruit" | "berries" | "wolfapple" | null;
+  /** Regions where the species lives (the diary shows them). */
+  regions: readonly RegionId[];
+  /** Behaviour traits read by the simulation and renderer instead of species checks. */
+  traits: SpeciesTraits;
+  /** Wild species that scare it (besides the player). */
+  predators: readonly SpeciesId[];
+  /** What it walks to when hungry: fruit bushes, wolf apples or termite mounds. */
+  feeds: "berry" | "wolfapple" | "mound" | null;
+  /** Assisted taming: which companion makes it approachable, and how. */
+  assist: { by: SpeciesId; kind: "calm" | "glow" } | null;
+};
+
+export type SpeciesTraits = {
+  /** Emits light: visible at night from afar, glow on the model. */
+  glows?: boolean;
+  /** Rests hidden in a burrow (or termite mound) at its home. */
+  burrows?: boolean;
+  /** Lies in the sun by day (idle becomes REST). */
+  basks?: boolean;
+  /** Lives only in the water body of its region. */
+  aquatic?: boolean;
+  /** Circles in the air by day and roosts on a perch at night. */
+  flies?: boolean;
+  /** Can enter deep water (swims). */
+  swims?: boolean;
+  /** Portrait height for the observation camera, in metres above its root. */
+  portrait: number;
 };
 
 export const SPECIES: readonly SpeciesProfile[] = [
@@ -72,6 +100,11 @@ export const SPECIES: readonly SpeciesProfile[] = [
     activeAt: "twilight",
     reproduction: "viviparous",
     tameMethod: "none",
+    regions: ["mata"],
+    traits: { swims: true, portrait: 0.6 },
+    predators: ["wolf"],
+    feeds: "berry",
+    assist: null,
     offering: null,
   },
   {
@@ -104,6 +137,11 @@ export const SPECIES: readonly SpeciesProfile[] = [
     activeAt: "twilight",
     reproduction: "viviparous",
     tameMethod: "none",
+    regions: ["mata"],
+    traits: { portrait: 0.38 },
+    predators: ["wolf", "eagle"],
+    feeds: "berry",
+    assist: null,
     offering: null,
   },
   {
@@ -136,6 +174,11 @@ export const SPECIES: readonly SpeciesProfile[] = [
     activeAt: "any",
     reproduction: "viviparous",
     tameMethod: "none",
+    regions: ["mata"],
+    traits: { portrait: 0.75 },
+    predators: [],
+    feeds: null,
+    assist: null,
     offering: null,
   },
   {
@@ -168,6 +211,11 @@ export const SPECIES: readonly SpeciesProfile[] = [
     activeAt: "day",
     reproduction: "oviparous",
     tameMethod: "none",
+    regions: ["mata"],
+    traits: { flies: true, portrait: 0 },
+    predators: [],
+    feeds: null,
+    assist: null,
     offering: null,
   },
   {
@@ -200,6 +248,11 @@ export const SPECIES: readonly SpeciesProfile[] = [
     activeAt: "day",
     reproduction: "viviparous",
     tameMethod: "bond",
+    regions: ["mata"],
+    traits: { glows: true, portrait: 0.65 },
+    predators: ["wolf"],
+    feeds: "berry",
+    assist: null,
     offering: "glowfruit",
   },
   {
@@ -232,6 +285,11 @@ export const SPECIES: readonly SpeciesProfile[] = [
     activeAt: "night",
     reproduction: "viviparous",
     tameMethod: "none",
+    regions: ["mata"],
+    traits: { burrows: true, portrait: 0.3 },
+    predators: ["wolf"],
+    feeds: null,
+    assist: null,
     offering: null,
   },
   {
@@ -264,6 +322,11 @@ export const SPECIES: readonly SpeciesProfile[] = [
     activeAt: "night",
     reproduction: "oviparous",
     tameMethod: "none",
+    regions: ["mata"],
+    traits: { portrait: 0.2 },
+    predators: [],
+    feeds: null,
+    assist: null,
     offering: null,
   },
   {
@@ -296,6 +359,11 @@ export const SPECIES: readonly SpeciesProfile[] = [
     activeAt: "day",
     reproduction: "oviparous",
     tameMethod: "none",
+    regions: ["mata"],
+    traits: { aquatic: true, swims: true, portrait: 0.05 },
+    predators: [],
+    feeds: null,
+    assist: null,
     offering: null,
   },
   {
@@ -328,6 +396,11 @@ export const SPECIES: readonly SpeciesProfile[] = [
     activeAt: "day",
     reproduction: "oviparous",
     tameMethod: "none",
+    regions: ["mata"],
+    traits: { basks: true, portrait: 0.28 },
+    predators: ["wolf"],
+    feeds: "berry",
+    assist: null,
     offering: null,
   },
   {
@@ -360,7 +433,160 @@ export const SPECIES: readonly SpeciesProfile[] = [
     activeAt: "any",
     reproduction: "fantasy-egg",
     tameMethod: "assisted",
+    regions: ["mata"],
+    traits: { glows: true, portrait: 0.45 },
+    predators: ["wolf"],
+    feeds: "berry",
+    assist: { by: "auryn", kind: "calm" },
     offering: "berries",
+  },
+  {
+    id: "anteater",
+    name: "Tamanduá-bandeira",
+    scientific: "Myrmecophaga tridactyla",
+    summary: "Caminha devagar de cupinzeiro em cupinzeiro com o focinho longo rente ao chão. Enxerga mal, mas tem um olfato excelente.",
+    biological: "Mamífero",
+    ecological: ["Terrestre"],
+    habitat: "Campos do Cerrado com cupinzeiros",
+    diet: "insectivore",
+    dietLabel: "Come formigas e cupins",
+    speed: 2.6,
+    strength: 6,
+    defense: 5,
+    stamina: 4,
+    perception: 3,
+    temperament: "calm",
+    temperamentLabel: "Pacífico, mas se defende com as garras",
+    rarity: "uncommon",
+    rarityLabel: "Incomum",
+    domesticable: false,
+    activity: "Atividade variável",
+    abilities: ["Língua longa", "Garras fortes"],
+    curiosity: "A língua passa de 60 cm e pode entrar e sair mais de 150 vezes por minuto. Ele come um pouco de cada cupinzeiro e segue adiante, sem destruir a colônia. A fêmea carrega o filhote nas costas.",
+    fleeRadius: 3.5,
+    sight: 12,
+    representation: "procedural-stylized-v2",
+    group: "mammal",
+    activeAt: "any",
+    reproduction: "viviparous",
+    tameMethod: "none",
+    regions: ["vereda"],
+    traits: { portrait: 0.6 },
+    predators: [],
+    feeds: "mound",
+    assist: null,
+    offering: null,
+  },
+  {
+    id: "seriema",
+    name: "Seriema",
+    scientific: "Cariama cristata",
+    summary: "Ave de pernas longas que prefere correr a voar. Seu canto alto atravessa o cerrado ao amanhecer.",
+    biological: "Ave",
+    ecological: ["Terrestre", "Voadora"],
+    habitat: "Campo aberto e capim alto",
+    diet: "omnivore",
+    dietLabel: "Onívora (sobretudo pequenos animais)",
+    speed: 6.2,
+    strength: 2,
+    defense: 2,
+    stamina: 6,
+    perception: 7,
+    temperament: "skittish",
+    temperamentLabel: "Arisca",
+    rarity: "common",
+    rarityLabel: "Comum",
+    domesticable: false,
+    activity: "Diurna",
+    abilities: ["Corrida", "Canto alto"],
+    curiosity: "Come insetos, lagartos e até serpentes, que golpeia contra o chão. Voa pouco e mal; foge correndo. Faz ninho em árvores baixas e põe ovos.",
+    fleeRadius: 6.5,
+    sight: 16,
+    representation: "procedural-stylized-v2",
+    group: "bird",
+    activeAt: "day",
+    reproduction: "oviparous",
+    tameMethod: "none",
+    regions: ["vereda"],
+    traits: { portrait: 0.7 },
+    predators: ["manedwolf"],
+    feeds: "berry",
+    assist: null,
+    offering: null,
+  },
+  {
+    id: "manedwolf",
+    name: "Lobo-guará",
+    scientific: "Chrysocyon brachyurus",
+    summary: "O maior canídeo da América do Sul, de pernas longas e pelagem ruiva. Tímido, solitário e nada parecido com o lobo-cinzento no comportamento.",
+    biological: "Mamífero",
+    ecological: ["Terrestre"],
+    habitat: "Campos e lobeiras do Cerrado",
+    diet: "omnivore",
+    dietLabel: "Onívoro (muito fruto)",
+    speed: 5.8,
+    strength: 4,
+    defense: 3,
+    stamina: 7,
+    perception: 7,
+    temperament: "skittish",
+    temperamentLabel: "Tímido",
+    rarity: "rare",
+    rarityLabel: "Rara",
+    domesticable: false,
+    activity: "Crepuscular",
+    abilities: ["Pernas longas", "Dispersor de sementes"],
+    curiosity: "Não é lobo nem raposa: é o único do gênero Chrysocyon. Cerca de metade da dieta é fruta-do-lobo, e ao espalhar as sementes ajuda a lobeira a crescer. Evita pessoas e não as ataca.",
+    fleeRadius: 8,
+    sight: 18,
+    representation: "procedural-stylized-v2",
+    group: "mammal",
+    activeAt: "twilight",
+    reproduction: "viviparous",
+    tameMethod: "none",
+    regions: ["vereda"],
+    traits: { portrait: 0.85 },
+    predators: [],
+    feeds: "wolfapple",
+    assist: null,
+    offering: null,
+  },
+  {
+    id: "brasalume",
+    name: "Brasalume",
+    scientific: null,
+    summary: "Criatura original do Cerrado, com placas âmbar que brilham como brasa fria. Dorme nos cupinzeiros de dia e só confia em quem anda com a luz de um musgarim.",
+    biological: "Criatura fantástica",
+    ecological: ["Terrestre", "Subterrâneo"],
+    habitat: "Dentro dos cupinzeiros da Vereda",
+    diet: "frugivore",
+    dietLabel: "Frugívora (fruta-do-lobo)",
+    speed: 4.4,
+    strength: 2,
+    defense: 4,
+    stamina: 5,
+    perception: 6,
+    temperament: "skittish",
+    temperamentLabel: "Desconfiada",
+    rarity: "legendary",
+    rarityLabel: "Rara",
+    domesticable: true,
+    activity: "Noturna",
+    abilities: ["Brasa fria", "Toca no cupinzeiro"],
+    curiosity: "Regra de fantasia: o brasalume reconhece o brilho do musgo como sinal de abrigo seguro. À noite, perto de um musgarim companheiro, deixa de fugir e aceita fruta-do-lobo.",
+    fleeRadius: 7,
+    sight: 12,
+    representation: "procedural-stylized-v2",
+    group: "fantasy",
+    activeAt: "night",
+    reproduction: "viviparous",
+    tameMethod: "assisted",
+    regions: ["vereda"],
+    traits: { glows: true, burrows: true, portrait: 0.4 },
+    predators: [],
+    feeds: "wolfapple",
+    assist: { by: "mosslight", kind: "glow" },
+    offering: "wolfapple",
   },
 ];
 

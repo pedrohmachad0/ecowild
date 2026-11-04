@@ -21,7 +21,9 @@ import {
 import { CONFIG } from "../config.ts";
 import { grassCount } from "../performance/quality.ts";
 import type { AppliedTier } from "../types.ts";
-import { CAMP, NESTS, SPAWNS, rockList, treeList, props } from "../world/layout.ts";
+import { moundList, rockList, treeList, props } from "../world/layout.ts";
+import { region } from "../world/region.ts";
+import { moundHeight, TREE_SHAPES, treeScale } from "../world/treeShapes.ts";
 import { dayPeriod, daylight } from "../world/clock.ts";
 import { heightAt, pathDistance, shoreBlend } from "../world/terrain.ts";
 import { mulberry32 } from "../math.ts";
@@ -56,6 +58,7 @@ function paintGround(scene: Scene): DynamicTexture {
   const image = ctx.getImageData(0, 0, size, size);
   const px = image.data;
   const span = 92;
+  const palette = region().palette;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const wx = (x / (size - 1) - 0.5) * span;
@@ -63,10 +66,7 @@ function paintGround(scene: Scene): DynamicTexture {
       const shore = shoreBlend(wx, wz);
       const path = Math.exp(-(pathDistance(wx, wz) * pathDistance(wx, wz)) / 3.2);
       const n = ((Math.sin(wx * 12.2 + wz * 4.1) + Math.sin(wx * 3.1 - wz * 9.4)) * 0.5 + 1) * 0.5;
-      const grassA = [62, 122, 64];
-      const grassB = [96, 146, 68];
-      const sand = [198, 174, 118];
-      const dirt = [132, 96, 58];
+      const { grassA, grassB, sand, dirt } = palette;
       const mix = (a: number, b: number, t: number) => a + (b - a) * t;
       let r = mix(grassA[0]!, grassB[0]!, n);
       let g = mix(grassA[1]!, grassB[1]!, n);
@@ -115,39 +115,49 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   groundMat.freeze();
 
   // Deep lake teal; low emissive so it reads as water, not a glowing neon disc.
-  const waterMat = mat(scene, "water", "#245f73", "#081e26");
+  const def = region();
+  const waterMat = mat(scene, "water", def.palette.water, "#081e26");
   waterMat.alpha = 0.8;
   waterMat.backFaceCulling = false;
   waterMat.specularColor = new Color3(0.5, 0.55, 0.55);
   waterMat.specularPower = 48;
-  const water = MeshBuilder.CreateDisc("water", { radius: 11, tessellation: 40 }, scene);
+  const water = MeshBuilder.CreateDisc("water", { radius: def.water.disc, tessellation: 40 }, scene);
   water.rotation.x = Math.PI / 2;
-  water.position.set(CONFIG.lakeX, CONFIG.waterY + 0.04, CONFIG.lakeZ);
+  water.position.set(def.water.x, CONFIG.waterY + 0.04, def.water.z);
   water.material = waterMat;
   water.isPickable = false;
 
-  const trunkMat = mat(scene, "trunk", "#6b4630");
-  const leafMats = [mat(scene, "leaf-a", "#1f6b3d"), mat(scene, "leaf-b", "#2f8a4a"), mat(scene, "leaf-c", "#3d7a38")];
+  const trunkMat = mat(scene, "trunk", def.palette.trunk);
+  const leafMats = def.palette.leaves.map((hex, i) => mat(scene, "leaf-" + i, hex));
   const trunks: Mesh[] = [];
   const leaves: Mesh[][] = [[], [], []];
-  let ti = 0;
-  for (const tree of treeList()) {
+  // Same filter and proportions as treeList() and the camera volumes (world/treeShapes.ts).
+  const placed = def.trees.filter(t => heightAt(t.x, t.z) >= CONFIG.waterY + 0.25);
+  placed.forEach((tree, ti) => {
     const h = heightAt(tree.x, tree.z);
-    const scale = 0.9 + ((ti * 17) % 5) * 0.08;
-    const trunk = MeshBuilder.CreateCylinder("trunk", { height: 3.7, diameter: 0.85, tessellation: 6 }, scene);
-    trunk.position.set(tree.x, h + 1.85 * scale, tree.z);
+    const scale = treeScale(ti), shape = TREE_SHAPES[tree.kind];
+    const trunk = MeshBuilder.CreateCylinder("trunk", { height: shape.trunk.height, diameterBottom: shape.trunk.diameter, diameterTop: shape.trunk.diameter * shape.trunk.topScale, tessellation: 6 }, scene);
+    trunk.position.set(tree.x, h + shape.trunk.height / 2 * scale, tree.z);
     trunk.scaling.set(scale, scale, scale);
+    if (tree.kind === "twisted") trunk.rotation.z = ((ti % 3) - 1) * 0.18;
     trunks.push(trunk);
-    const crown = MeshBuilder.CreateSphere("crown", { diameter: 3.4, segments: 6 }, scene);
-    crown.position.set(tree.x, h + 4.1 * scale, tree.z);
-    crown.scaling.set(scale * 1.05, scale * 0.85, scale);
-    leaves[ti % 3]!.push(crown);
-    const crown2 = MeshBuilder.CreateSphere("crown2", { diameter: 2.4, segments: 5 }, scene);
-    crown2.position.set(tree.x + 0.35 * scale, h + 3.4 * scale, tree.z + 0.2);
-    crown2.scaling.set(scale, scale * 0.8, scale);
-    leaves[(ti + 1) % 3]!.push(crown2);
-    ti++;
-  }
+    shape.crowns.forEach((c, ci) => {
+      const crown = MeshBuilder.CreateSphere("crown", { diameter: c.diameter, segments: ci ? 5 : 6 }, scene);
+      crown.position.set(tree.x + c.x * scale, h + c.y * scale, tree.z + c.z);
+      crown.scaling.set(scale * c.sx, scale * c.sy, scale * c.sz);
+      leaves[(ti + ci) % 3]!.push(crown);
+    });
+    // Buriti fronds: a ring of drooping leaf blades around the crown.
+    if (tree.kind === "buriti") for (let f = 0; f < 7; f++) {
+      const a = f / 7 * Math.PI * 2 + ti;
+      const frond = MeshBuilder.CreateCylinder("frond", { height: 2.2, diameterTop: 0, diameterBottom: 0.5, tessellation: 3 }, scene);
+      frond.position.set(tree.x + Math.cos(a) * 1.1 * scale, h + 6.4 * scale, tree.z + Math.sin(a) * 1.1 * scale);
+      frond.rotation.set(0, -a, Math.PI / 2 + 0.35);
+      frond.rotation.y = -a;
+      frond.scaling.setAll(scale);
+      leaves[(ti + f) % 3]!.push(frond);
+    }
+  });
   const merge = (meshes: Mesh[], material: StandardMaterial, name: string): Mesh | null => {
     if (meshes.length === 0) return null;
     const merged = Mesh.MergeMeshes(meshes, true, true, undefined, false, false);
@@ -190,6 +200,20 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
     rockParts.push(mesh);
   }
   const rockMesh = merge(rockParts, rockMat, "rocks");
+  // Termite mounds (cupinzeiros): tall clay cones that block movement and sight.
+  const moundMat = mat(scene, "termite-mound", "#a8683e");
+  const moundParts: Mesh[] = [];
+  for (const m of moundList()) {
+    const hgt = moundHeight(m.r);
+    const cone = MeshBuilder.CreateCylinder("mound", { height: hgt, diameterBottom: m.r * 2.1, diameterTop: m.r * 0.5, tessellation: 9 }, scene);
+    cone.position.set(m.x, heightAt(m.x, m.z) + hgt / 2 - 0.05, m.z);
+    moundParts.push(cone);
+    const lump = MeshBuilder.CreateSphere("mound-lump", { diameter: m.r * 1.2, segments: 4 }, scene);
+    lump.position.set(m.x + m.r * 0.4, heightAt(m.x, m.z) + hgt * 0.35, m.z - m.r * 0.3);
+    moundParts.push(lump);
+  }
+  const mounds = merge(moundParts, moundMat, "mounds");
+  if (mounds) mounds.receiveShadows = true;
 
   const propNodes = new Map<string, TransformNode>();
   const berryMat = mat(scene, "berry-bush", "#2c6b3c");
@@ -200,12 +224,12 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   const eggMat = mat(scene, "moss-egg", "#e8efd6", "#4a7a5a");
   const dirtMat = mat(scene, "burrow-dirt", "#6b4d31");
   const holeMat = mat(scene, "burrow-hole", "#1d140d");
-  for (const nest of NESTS) {
+  for (const nest of def.nests) {
     const ring = MeshBuilder.CreateTorus(nest.id, { diameter: 0.7, thickness: 0.22, tessellation: 14 }, scene);
     ring.position.set(nest.x, heightAt(nest.x, nest.z) + 0.06, nest.z);
     ring.material = mossMat; ring.isPickable = false; ring.freezeWorldMatrix();
   }
-  for (const home of SPAWNS.armadillo) {
+  for (const home of def.burrows) {
     const mound = MeshBuilder.CreateSphere(home.id + "-mound", { diameterX: 1.3, diameterY: 0.35, diameterZ: 1.1, segments: 6 }, scene);
     mound.position.set(home.x + 0.45, heightAt(home.x, home.z) + 0.02, home.z + 0.3);
     mound.material = dirtMat; mound.isPickable = false; mound.freezeWorldMatrix();
@@ -214,10 +238,23 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
     hole.position.set(home.x, heightAt(home.x, home.z) + 0.04, home.z);
     hole.material = holeMat; hole.isPickable = false; hole.freezeWorldMatrix();
   }
+  const wolfShrub = mat(scene, "wolfapple-shrub", "#6f8a4a");
+  const wolfFruit = mat(scene, "wolfapple", "#a9c95a", "#25300f");
   for (const prop of props()) {
     const root = new TransformNode(prop.id, scene);
     const h = heightAt(prop.x, prop.z);
     root.position.set(prop.x, h, prop.z);
+    if (prop.kind === "wolfapple") {
+      // Lobeira: a small shrub with large green-yellow fruits.
+      const shrub = MeshBuilder.CreateSphere(prop.id + "-shrub", { diameterX: 1, diameterY: 0.8, diameterZ: 0.9, segments: 6 }, scene);
+      shrub.parent = root; shrub.position.y = 0.42; shrub.material = wolfShrub; shrub.isPickable = false;
+      for (const [dx, dz] of [[0.32, 0.2], [-0.25, 0.3], [0.1, -0.35]] as const) {
+        const fruit = MeshBuilder.CreateSphere(prop.id + "-wf", { diameter: 0.2, segments: 5 }, scene);
+        fruit.parent = root; fruit.position.set(dx, 0.55, dz); fruit.material = wolfFruit; fruit.isPickable = false;
+      }
+      propNodes.set(prop.id, root);
+      continue;
+    }
     if (prop.kind === "egg") {
       const egg = MeshBuilder.CreateSphere(prop.id + "-egg", { diameterX: 0.2, diameterY: 0.27, diameterZ: 0.2, segments: 8 }, scene);
       egg.parent = root; egg.position.y = 0.16; egg.material = eggMat; egg.isPickable = false;
@@ -240,9 +277,12 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   // Research camp: tent, campfire and the warmed nest used as incubator.
   const campMats = { tent: mat(scene, "tent", "#b88a4a"), stone: mat(scene, "camp-stone", "#8a8378"), log: mat(scene, "camp-log", "#5a3a22"), flame: mat(scene, "flame", "#ffb347", "#ff8c1a") };
   campMats.flame.disableLighting = true;
-  const tent = MeshBuilder.CreateCylinder("tent", { height: 1.5, diameterTop: 0, diameterBottom: 2.1, tessellation: 4 }, scene);
-  tent.position.set(CAMP.tent.x, heightAt(CAMP.tent.x, CAMP.tent.z) + 0.75, CAMP.tent.z);
-  tent.rotation.y = Math.PI / 4; tent.material = campMats.tent; tent.isPickable = false; tent.freezeWorldMatrix();
+  const CAMP = def.camp;
+  if (CAMP.tent) {
+    const tent = MeshBuilder.CreateCylinder("tent", { height: 1.5, diameterTop: 0, diameterBottom: 2.1, tessellation: 4 }, scene);
+    tent.position.set(CAMP.tent.x, heightAt(CAMP.tent.x, CAMP.tent.z) + 0.75, CAMP.tent.z);
+    tent.rotation.y = Math.PI / 4; tent.material = campMats.tent; tent.isPickable = false; tent.freezeWorldMatrix();
+  }
   const fire = new TransformNode("campfire", scene);
   fire.position.set(CAMP.x + 0.6, heightAt(CAMP.x + 0.6, CAMP.z - 1.6), CAMP.z - 1.6);
   for (let i = 0; i < 7; i++) {
@@ -257,7 +297,9 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   const flame = MeshBuilder.CreateCylinder("flame", { height: 0.45, diameterTop: 0, diameterBottom: 0.3, tessellation: 6 }, scene);
   flame.parent = fire; flame.position.y = 0.3; flame.material = campMats.flame; flame.isPickable = false;
   const incubator = new TransformNode("incubator", scene);
-  incubator.position.set(CAMP.incubator.x, heightAt(CAMP.incubator.x, CAMP.incubator.z), CAMP.incubator.z);
+  const nestSpot = CAMP.incubator ?? { x: CAMP.x, z: CAMP.z };
+  incubator.position.set(nestSpot.x, heightAt(nestSpot.x, nestSpot.z), nestSpot.z);
+  incubator.setEnabled(!!CAMP.incubator);
   const warmNest = MeshBuilder.CreateTorus("warm-nest", { diameter: 0.6, thickness: 0.2, tessellation: 14 }, scene);
   warmNest.parent = incubator; warmNest.position.y = 0.08; warmNest.material = mossMat; warmNest.isPickable = false;
   for (let i = 0; i < 6; i++) {
@@ -269,8 +311,16 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   warmingEgg.parent = incubator; warmingEgg.position.y = 0.18; warmingEgg.material = eggMat; warmingEgg.isPickable = false;
   warmingEgg.setEnabled(false);
 
+  // Exit posts: a lantern-topped post marks every trail to another region.
+  for (const exit of def.exits) {
+    const post = MeshBuilder.CreateCylinder("exit-post", { height: 2, diameter: 0.14, tessellation: 6 }, scene);
+    post.position.set(exit.x, heightAt(exit.x, exit.z) + 1, exit.z); post.material = trunkMat; post.isPickable = false;
+    const lamp = MeshBuilder.CreateSphere("exit-lamp", { diameter: 0.28, segments: 6 }, scene);
+    lamp.position.set(exit.x, heightAt(exit.x, exit.z) + 2.1, exit.z); lamp.material = campMats.flame; lamp.isPickable = false;
+  }
+
   const sign = new TransformNode("sign", scene);
-  sign.position.set(1.4, heightAt(1.4, 16.2), 16.2);
+  sign.position.set(def.sign.x, heightAt(def.sign.x, def.sign.z), def.sign.z);
   const post = MeshBuilder.CreateCylinder("post", { height: 1.3, diameter: 0.08, tessellation: 5 }, scene);
   post.parent = sign;
   post.position.y = 0.65;
@@ -293,7 +343,7 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   sctx.fillRect(0, 0, 512, 160);
   sctx.fillStyle = "#f4efe4";
   sctx.font = "600 54px Georgia";
-  sctx.fillText("Mata da Nascente", 28, 98);
+  sctx.fillText(def.sign.text, 28, 98);
   signTex.update();
   // The right-handed scene mirrors plane UVs; flip U so the text reads correctly.
   signTex.wrapU = Texture.WRAP_ADDRESSMODE;
@@ -308,7 +358,7 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   let grass: Mesh | null = null;
   if (scene.getEngine().getCaps().instancedArrays) {
     grass = MeshBuilder.CreateCylinder("grass", { height: 0.42, diameterTop: 0, diameterBottom: 0.07, tessellation: 3 }, scene);
-    const gmat = mat(scene, "grass", "#3f8f4e");
+    const gmat = mat(scene, "grass", def.palette.grass);
     grass.material = gmat;
     grass.isPickable = false;
     const rand = mulberry32(7);
@@ -355,7 +405,8 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   const flies: Mesh[] = [];
   const frand = mulberry32(31);
   for (let i = 0; i < 46; i++) {
-    const cx = i % 2 ? CONFIG.lakeX : -9, cz = i % 2 ? CONFIG.lakeZ : -7, a = frand() * Math.PI * 2, r = 4 + frand() * 6;
+    const spot = def.highlights[0] ?? def.water;
+    const cx = i % 2 ? def.water.x : spot.x, cz = i % 2 ? def.water.z : spot.z, a = frand() * Math.PI * 2, r = 4 + frand() * 6;
     const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
     const fly = MeshBuilder.CreateSphere("firefly", { diameter: 0.06, segments: 2 }, scene);
     fly.position.set(x, Math.max(heightAt(x, z), CONFIG.waterY) + 0.5 + frand() * 1.4, z);
@@ -364,7 +415,7 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   const fireflies = Mesh.MergeMeshes(flies, true, true)!;
   fireflies.material = fireflyMat; fireflies.isPickable = false; fireflies.setEnabled(false);
 
-  const daySky = new Color3(0.55, 0.76, 0.84), nightSky = new Color3(0.05, 0.08, 0.16), duskSky = new Color3(0.86, 0.58, 0.44);
+  const daySky = new Color3(...def.palette.sky), nightSky = new Color3(0.05, 0.08, 0.16), duskSky = new Color3(0.86, 0.58, 0.44);
   const dayHemi = new Color3(0.85, 0.92, 0.95), nightHemi = new Color3(0.32, 0.4, 0.62);
   const tmp = new Color3();
   const setTime = (dayF: number, player: { x: number; y: number; z: number }, time: number) => {

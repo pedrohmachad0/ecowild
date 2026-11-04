@@ -118,10 +118,10 @@ describe('importação de progresso', () => {
   test('aceita save exportado e normaliza', () => {
     const result = parseImport(JSON.stringify(valid(), null, 2));
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.data.version).toBe(2);
+    if (result.ok) expect(result.data.version).toBe(3);
   });
   test('recusa JSON inválido, versão futura, estrutura errada e arquivo enorme', () => {
-    for (const text of ['{nope', JSON.stringify({ ...valid(), version: 3 }), JSON.stringify({ hello: 1 }), '[]', 'x'.repeat(600 * 1024)]) {
+    for (const text of ['{nope', JSON.stringify({ ...valid(), version: 4 }), JSON.stringify({ hello: 1 }), '[]', 'x'.repeat(600 * 1024)]) {
       const result = parseImport(text);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.reason.length).toBeGreaterThan(5);

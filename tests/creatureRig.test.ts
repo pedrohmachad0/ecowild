@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { NullEngine, Scene, Vector3 } from "@babylonjs/core";
 import { animateRig, buildCreature } from "../src/game/render/actors.ts";
 import type { AiState, SpeciesId } from "../src/game/types.ts";
+import { SPECIES } from "../src/game/data/species.ts";
 
-const species: SpeciesId[] = ["capybara", "rabbit", "wolf", "eagle", "auryn", "armadillo", "toad", "fish", "tegu", "mosslight"];
+const species: SpeciesId[] = SPECIES.map(s => s.id);
 describe("modelos articulados da fauna", () => {
   it("constrói corpos finitos, apoios no chão e materiais compartilhados", () => {
     const engine = new NullEngine(), scene = new Scene(engine);

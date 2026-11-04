@@ -1,23 +1,17 @@
 import type { AiState, DiscoveryFlags, PetCommand, QualityName, SaveData, SavedPet, SavedPhoto, SpeciesId } from "../types.ts";
 
 import { SPECIES as PROFILES, SPECIES_BY_ID } from "../data/species.ts";
-import { SPAWNS, props } from "../world/layout.ts";
+import { allRegions, isRegionId } from "../world/region.ts";
+import type { RegionId } from "../world/region.ts";
+import "../world/regions/index.ts";
 import { CHALLENGES } from "../progression/challenges.ts";
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 const SPECIES = PROFILES.map((s) => s.id);
-const SPAWN_CREATURES: { id: string; speciesId: SpeciesId }[] = [
-  ...SPAWNS.capybara.map(s => ({ id: s.id, speciesId: "capybara" as const })),
-  ...SPAWNS.rabbit.map(s => ({ id: s.id, speciesId: "rabbit" as const })),
-  ...SPAWNS.wolf.map(s => ({ id: s.id, speciesId: "wolf" as const })),
-  { id: SPAWNS.eagle.id, speciesId: "eagle" },
-  { id: SPAWNS.auryn.id, speciesId: "auryn" },
-  ...SPAWNS.armadillo.map(s => ({ id: s.id, speciesId: "armadillo" as const })),
-  ...SPAWNS.toad.map(s => ({ id: s.id, speciesId: "toad" as const })),
-  ...SPAWNS.fish.map(s => ({ id: s.id, speciesId: "fish" as const })),
-  ...SPAWNS.tegu.map(s => ({ id: s.id, speciesId: "tegu" as const })),
-  ...SPAWNS.mosslight.map(s => ({ id: s.id, speciesId: "mosslight" as const })),
-];
+// Every region contributes its spawns and props: a save can hold all of them.
+const SPAWN_CREATURES: { id: string; speciesId: SpeciesId }[] = allRegions().flatMap(r => r.creatures.map(c => ({ id: c.id, speciesId: c.speciesId })));
+const PROP_IDS = allRegions().flatMap(r => r.props.map(p => p.id));
+const AURYN_ID = "auryn-1";
 const SPAWN_SPECIES = new Map(SPAWN_CREATURES.map(c => [c.id, c.speciesId]));
 const COMMANDS: readonly PetCommand[] = ["FOLLOW", "STAY", "RETURN", "PROTECT"];
 const QUALITIES: readonly QualityName[] = ["low", "medium", "high", "auto"];
@@ -62,12 +56,12 @@ function petName(raw: unknown, fallback: string): string {
 export function migrateSave(raw: unknown): SaveData | null {
   if (!isRecord(raw)) return null;
   const version = raw.version;
-  if (version !== 1 && version !== 2) return null;
+  if (version !== 1 && version !== 2 && version !== 3) return null;
   if (!isRecord(raw.player)) return null;
   const p = raw.player;
   if (![p.x, p.y, p.z].every((v) => typeof v === "number" && Number.isFinite(v))) return null;
   if (!isRecord(raw.inventory) || !isRecord(raw.discoveries) || !isRecord(raw.creatures)) return null;
-  if (version === 2 && !Array.isArray(raw.pets)) return null;
+  if (version >= 2 && !Array.isArray(raw.pets)) return null;
   const inv = raw.inventory;
   const settings = isRecord(raw.settings) ? raw.settings : {};
   const quality = QUALITIES.includes(settings.quality as QualityName) ? (settings.quality as QualityName) : "auto";
@@ -80,7 +74,7 @@ export function migrateSave(raw: unknown): SaveData | null {
   for (const [id, value] of Object.entries(raw.creatures)) {
     if (!isRecord(value)) continue;
     let speciesId = SPAWN_SPECIES.get(id);
-    const isBorn = !speciesId && version === 2 && BORN_ID.test(id) && SPECIES_BY_ID[value.speciesId as SpeciesId]?.reproduction === "fantasy-egg";
+    const isBorn = !speciesId && version >= 2 && BORN_ID.test(id) && SPECIES_BY_ID[value.speciesId as SpeciesId]?.reproduction === "fantasy-egg";
     if (isBorn) { if (born >= MAX_BORN) continue; born++; speciesId = value.speciesId as SpeciesId; speciesOf.set(id, speciesId); }
     if (!speciesId) continue;
     creatures[id] = {
@@ -93,17 +87,18 @@ export function migrateSave(raw: unknown): SaveData | null {
       trust: num(value.trust, 0, 0, 100),
       tamed: SPECIES_BY_ID[speciesId].domesticable && value.tamed === true,
       ...(isBorn ? { speciesId } : {}),
+      ...(isRegionId(value.region) ? { region: value.region } : {}),
     };
   }
   for (const c of Object.values(creatures)) if (c.tamed) c.trust = 100;
 
   const picked: Record<string, boolean> = {};
   if (isRecord(raw.picked)) {
-    for (const { id } of props()) if (raw.picked[id] === true) picked[id] = true;
+    for (const id of PROP_IDS) if (raw.picked[id] === true) picked[id] = true;
   }
 
   // v1 had a single optional Auryn pet; v2 keeps one entry per tamed creature.
-  const rawPets: unknown[] = version === 1 ? (isRecord(raw.pet) ? [{ ...raw.pet, id: SPAWNS.auryn.id, speciesId: "auryn" }] : []) : raw.pets as unknown[];
+  const rawPets: unknown[] = version === 1 ? (isRecord(raw.pet) ? [{ ...raw.pet, id: AURYN_ID, speciesId: "auryn" }] : []) : raw.pets as unknown[];
   const pets: SavedPet[] = [];
   for (const entry of rawPets) {
     if (!isRecord(entry) || typeof entry.id !== "string") continue;
@@ -124,7 +119,7 @@ export function migrateSave(raw: unknown): SaveData | null {
   }
 
   const photos: SaveData["photos"] = {};
-  if (version === 2 && isRecord(raw.photos)) {
+  if (version >= 2 && isRecord(raw.photos)) {
     for (const id of SPECIES) {
       const photo = raw.photos[id];
       if (!isRecord(photo) || typeof photo.image !== "string") continue;
@@ -133,11 +128,16 @@ export function migrateSave(raw: unknown): SaveData | null {
     }
   }
   const challenges: Record<string, boolean> = {};
-  if (version === 2 && isRecord(raw.challenges)) for (const c of CHALLENGES) if (raw.challenges[c.id] === true) challenges[c.id] = true;
-  const incubator = version === 2 && isRecord(raw.incubator) ? { progress: num(raw.incubator.progress, 0, 0, 0.999) } : null;
+  if (version >= 2 && isRecord(raw.challenges)) for (const c of CHALLENGES) if (raw.challenges[c.id] === true) challenges[c.id] = true;
+  const incubator = version >= 2 && isRecord(raw.incubator) ? { progress: num(raw.incubator.progress, 0, 0, 0.999) } : null;
 
+  const regionId: RegionId = version === 3 && isRegionId(raw.region) ? raw.region : "mata";
+  const visited: RegionId[] = Array.isArray(raw.visited) ? [...new Set(raw.visited.filter(isRegionId))] : [];
+  if (!visited.includes(regionId)) visited.push(regionId);
   return {
-    version: 2,
+    version: 3,
+    region: regionId,
+    visited,
     player: {
       x: num(p.x, 0, -80, 80),
       y: num(p.y, 0, -10, 40),
@@ -151,6 +151,7 @@ export function migrateSave(raw: unknown): SaveData | null {
       glowfruit: Math.round(num(inv.glowfruit, 0, 0, 20)),
       berries: Math.round(num(inv.berries, 0, 0, 20)),
       eggs: Math.round(num(inv.eggs, 0, 0, 2)),
+      wolfapple: Math.round(num(inv.wolfapple, 0, 0, 20)),
     },
     picked,
     discoveries,

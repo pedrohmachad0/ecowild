@@ -16,11 +16,14 @@ import { buildForest } from "./render/forest.ts";
 import type { Forest } from "./render/forest.ts";
 import { commandPet, createSim, eatBerry, petSnapshot, petViews, recordPhoto, shout, stepSim, toSave, trustSnapshot, usePetAbility } from "./sim/simulation.ts";
 import type { PetView } from "./sim/simulation.ts";
+import { SPECIES } from "./data/species.ts";
 import { challengeViews } from "./progression/challenges.ts";
 import type { ChallengeView } from "./progression/challenges.ts";
 import { clockLabel, dayFraction, dayPeriod, PERIOD_LABEL } from "./world/clock.ts";
 import type { DayPeriod } from "./world/clock.ts";
 import type { SpeciesId } from "./types.ts";
+import type { PropKind, RegionId } from "./world/region.ts";
+import { allRegions, region, setActiveRegion } from "./world/region.ts";
 import type { PetAbility, Simulation, SimCreature } from "./sim/simulation.ts";
 import { parseImport } from "./persistence/importSave.ts";
 import type { ImportPreview } from "./persistence/importSave.ts";
@@ -58,7 +61,9 @@ export class EcoWildGame {
   private camPitch: number = CONFIG.camera.pitch;
   private camDist: number = CONFIG.camera.distance;
   private fov = 0.86;
-  private readonly cameraVolumes = createCameraVolumes();
+  private cameraVolumes = createCameraVolumes();
+  /** Region whose scene is currently built; differs from sim.region right after a trip. */
+  private loadedRegion: RegionId = region().id;
   private boomDistance: number = CONFIG.camera.distance;
   private focusId: string | null = null;
   private previousView: { mode: CameraMode; yaw: number; pitch: number; distance: number } | null = null;
@@ -135,15 +140,7 @@ export class EcoWildGame {
         preserveDrawingBuffer: false,
       });
       this.applyScale();
-      const scene = new Scene(this.engine);
-      scene.useRightHandedSystem = true;
-      this.scene = scene;
-      const camera = new FreeCamera("cam", new Vector3(0, 6, 20), scene);
-      camera.minZ = 0.12;
-      camera.maxZ = 160;
-      camera.fov = this.fov;
-      this.camera = camera;
-      this.forest = buildForest(scene, this.tier);
+      this.buildScene();
       const loaded = await this.saves.load();
       this.loadStatus = loaded.status;
       this.pendingSave = loaded.data;
@@ -152,7 +149,7 @@ export class EcoWildGame {
       this.quality = prefs.quality; this.lookSens = prefs.lookSens; this.deadzone = prefs.deadzone; this.hudMap = prefs.hudMap;
       this.input.setDeadzone(this.deadzone);
       if (this.quality !== "auto") this.tier = this.quality;
-      this.forest.setTier(this.tier); this.applyScale();
+      this.forest?.setTier(this.tier); this.applyScale();
       this.sim = createSim(null);
       this.buildActors();
       this.engine.runRenderLoop(() => this.frame());
@@ -381,6 +378,40 @@ export class EcoWildGame {
     if (window.__controlsTest) delete window.__controlsTest;
   }
 
+  /** One scene per loaded region: terrain, forest, camera and camera volumes. */
+  private buildScene(): void {
+    if (!this.engine) return;
+    const scene = new Scene(this.engine);
+    scene.useRightHandedSystem = true;
+    this.scene = scene;
+    const camera = new FreeCamera("cam", new Vector3(0, 6, 20), scene);
+    camera.minZ = 0.12;
+    camera.maxZ = 160;
+    camera.fov = this.fov;
+    this.camera = camera;
+    this.forest = buildForest(scene, this.tier);
+    this.cameraVolumes = createCameraVolumes();
+    this.loadedRegion = region().id;
+  }
+
+  /**
+   * Travel (or loading a save in another region) swaps the whole scene. The old scene
+   * is disposed with its meshes/materials/lights; the engine and the simulation stay.
+   */
+  private rebuildWorld(): void {
+    if (!this.sim || !this.engine) return;
+    setActiveRegion(this.sim.region);
+    this.stopObservation();
+    this.scene?.dispose();
+    this.rigs.clear(); this.playerRig = null; this.lastShadow = null;
+    this.buildScene();
+    this.forest?.setTier(this.tier);
+    this.buildActors();
+    this.camYaw = this.sim.player.yaw;
+    this.boomDistance = this.camDist;
+    this.pushHud();
+  }
+
   private buildActors(): void {
     if (!this.scene || !this.sim) return;
     this.playerRig = buildPlayer(this.scene);
@@ -392,6 +423,7 @@ export class EcoWildGame {
   private frame(): void {
     if (!this.engine || !this.scene || !this.sim || !this.camera || this.disposed) return;
     if (this.contextLost || document.hidden) return;
+    if (this.sim.region !== this.loadedRegion) { this.rebuildWorld(); return; }
     const dt = Math.min(this.engine.getDeltaTime() / 1000, CONFIG.maxFrame);
     this.time += dt;
     const input = this.input.sample();
@@ -630,18 +662,19 @@ export class EcoWildGame {
         pet: null,
         trust: null,
         catalog: [],
-        inventory: { glowfruit: 0, berries: 0, eggs: 0 },
+        inventory: { glowfruit: 0, berries: 0, eggs: 0, wolfapple: 0 },
         panel: "none",
         toasts: [],
         discovered: 0,
-        species: 10,
+        species: SPECIES.length,
         map: [],
         player: { x: 0, z: 18 },
         yaw: 0,
         swimming: false,
         hasSave: !!this.pendingSave,
         threat: 0, track: null, abilities: null, props: [],
-        pets: [], challenges: [], photos: {}, day: { clock: "", period: "day", label: "", fraction: 0.3 }, incubator: null, flash: 0, hudMap: this.hudMap, shoutReady: false,
+        pets: [], challenges: [], photos: {}, visited: [], regions: allRegions().map(r => ({ id: r.id, name: r.name })),
+        place: placeView(), day: { clock: "", period: "day", label: "", fraction: 0.3 }, incubator: null, flash: 0, hudMap: this.hudMap, shoutReady: false,
       };
     }
     const avg = this.fpsWindow.length
@@ -686,6 +719,9 @@ export class EcoWildGame {
       threat: sim.threat,
       props: sim.props.map(p => ({ id: p.id, kind: p.kind, x: p.x, z: p.z, available: !p.taken && p.depleted <= 0 })),
       pets: petViews(sim),
+      visited: [...sim.visited],
+      regions: allRegions().map(r => ({ id: r.id, name: r.name })),
+      place: placeView(),
       challenges: challengeViews(sim),
       photos: Object.fromEntries(Object.entries(sim.photos).map(([id, photo]) => [id, photo!.image])),
       day: (() => { const f = dayFraction(sim.time), period = dayPeriod(f); return { clock: clockLabel(f), period, label: PERIOD_LABEL[period], fraction: f }; })(),
@@ -737,6 +773,12 @@ export class EcoWildGame {
   };
 }
 
+/** What the guide needs to know about the active region. */
+function placeView() {
+  const def = region();
+  return { id: def.id, name: def.name, biome: def.biome, guide: def.guide, territory: !!def.territory, nests: def.nests.length > 0 };
+}
+
 declare global {
   interface Window {
     __controlsTest?: {
@@ -771,7 +813,7 @@ export type HudSnapshot = {
   pet: { name: string; command: PetCommand; level: number; xp: number } | null;
   trust: { value: number; near: boolean } | null;
   catalog: ReturnType<typeof catalogView>;
-  inventory: { glowfruit: number; berries: number; eggs: number };
+  inventory: { glowfruit: number; berries: number; eggs: number; wolfapple: number };
   panel: "none" | "catalog" | "inventory" | "map" | "pause";
   toasts: string[];
   discovered: number;
@@ -782,8 +824,11 @@ export type HudSnapshot = {
   swimming: boolean;
   hasSave: boolean;
   threat: number;
-  props: { id: string; kind: "glow" | "berry" | "egg"; x: number; z: number; available: boolean }[];
+  props: { id: string; kind: PropKind; x: number; z: number; available: boolean }[];
   pets: PetView[];
+  visited: RegionId[];
+  regions: { id: RegionId; name: string }[];
+  place: ReturnType<typeof placeView>;
   challenges: ChallengeView[];
   photos: Partial<Record<SpeciesId, string>>;
   day: { clock: string; period: DayPeriod; label: string; fraction: number };

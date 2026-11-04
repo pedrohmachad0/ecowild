@@ -12,7 +12,7 @@ Continuação em 27/10/2026 sobre `main@2cdacf7`, após o merge do PR #5, na bra
 | M6 Diário/bolsa | Campos graduais, pesquisa, filtros, coleta/consumo, guia com mapa gráfico | Sem fotografias ou minimapa fixo no HUD; rastro só via Auryn |
 | M7 Progresso | Save v1 validado, fila, backup no novo jogo, falhas visíveis, preferências separadas | Restauração atômica, exportação, importação JSON com prévia e conflito entre abas implementados |
 | M8 PWA/mobile | Manifest/ícones, shell offline, atualização consentida, base relativa | Chromium emulado; instalação/standalone e desempenho físico pendentes |
-| M9 Expansão | Ovos e nascimento (fantasia), fotografia, desafios científicos, dia/noite, novos grupos biológicos | Um bioma só; sem novos biomas, mergulho, cavernas, montarias ou genética |
+| M9 Expansão | Registro de regiões, viagem, **Vereda do Cerrado** (tamanduá, seriema, lobo-guará, brasalume), ovos (fantasia), fotos, 16 desafios, dia/noite | Dois biomas; sem mergulho, cavernas, montarias ou genética. Guia em [EXPANDIR](EXPANDIR.md) |
 
 ## Marcos oficiais do Prompt Mestre
 
@@ -33,6 +33,10 @@ Definições incorporadas do PR #3; a tabela acima continua indicando o estado r
 A infraestrutura PWA é requisito de lançamento do vertical slice; a instalação continua opcional para o jogador; planejar desde a fundação, mas só marcar como implementado após código e testes. Landscape-first é obrigatório no mobile. Para cada marco, registrar separadamente: planejado / implementado / validado em navegador / validado em hardware. Não marcar M2/M3 completos sem colisões e interações. Antes de M4, validar navegação, controles e câmera em ambiente real; antes de M5, IA e navegação estáveis. Metas 30 FPS mobile e 60 FPS desktop exigem medição.
 
 M4/M5 já têm implementações no PR #4. Esses gates orientam aceitação e expansão: não apagar os sistemas existentes nem confundir implementação em navegador com validação física pendente.
+
+## Próximas expansões sugeridas
+
+Seguir [EXPANDIR](EXPANDIR.md). Candidatos coerentes com a visão: manguezal ou rio (exploração aquática e peixes), caverna (subterrâneo, morcegos), serra/campo rupestre (relevo e altitude), Pantanal (cheia e seca). Cada região nova passa pelo contrato de `tests/regions.test.ts`.
 
 ## Próximas tarefas pequenas
 
@@ -66,12 +70,12 @@ M4/M5 já têm implementações no PR #4. Esses gates orientam aceitação e exp
 
 | Pilar | Primeiro marco verificável | Recorte atual | Futuro |
 |---|---|---|---|
-| Biologia/geografia/relevos | M3 | Mata imaginária, lago, margens, tocas, pedras quentes, ciclo de dia e noite | Biomas/climas/altitude/ecologia mais ricos |
+| Biologia/geografia/relevos | M3 | Mata imaginária e Vereda do Cerrado (buritis, cupinzeiros, lobeiras), ligadas por trilha; ciclo de dia e noite | Biomas/climas/altitude/ecologia mais ricos |
 | Fauna real e fantástica | M4 | Mamíferos, ave, réptil (teiú), anfíbio (sapo-cururu), peixe (lambari), Auryn e musgarim; aquático, subterrâneo e arborícola | Invertebrados, mais espécies por bioma |
 | Catálogo e colecionáveis | M6 | Avistamento com linha de visão, habitat, observação, interação, fotos e 12 desafios | Rastros físicos e coleções por bioma |
 | Pets exóticos | M5 | Auryn e musgarim; vários companheiros com nome e nível | Mais espécies e habilidades por pet |
 | Selvagens e defesa | M5 | Lobos ameaçam/atacam com aviso visível; Auryn próxima protege ou acalma | Táticas e prioridades mais ricas |
-| Domesticação assistida | M5 | **Implementada**: o musgarim adulto só confia enquanto está calmo pelo pulso da Auryn | Outras combinações pet → espécie |
+| Domesticação assistida | M5 | **Implementada**: musgarim (pulso calmo da Auryn) e brasalume (luz de um musgarim, à noite) | Mais combinações pet → espécie |
 | Ovos para certos pets | M9 | **Implementado** para o musgarim (fantasia): ninho → bolsa → ninho aquecido → filhote | Outras espécies de fantasia ovíparas |
 | Exploração especial | M3: navegação; expansão posterior | Caminhar e natação superficial | Aquática, aérea, cavernas e subterrâneo |
 

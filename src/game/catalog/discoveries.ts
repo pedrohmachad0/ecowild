@@ -1,5 +1,7 @@
 import { SPECIES_BY_ID } from "../data/species.ts";
 import type { BioGroup } from "../data/species.ts";
+import { regionById } from "../world/region.ts";
+import "../world/regions/index.ts";
 import type { DiscoveryFlags, SpeciesId } from "../types.ts";
 import { emptyDiscovery } from "../persistence/schema.ts";
 
@@ -41,6 +43,8 @@ export type CatalogEntry = {
   abilities: readonly string[];
   domesticable: boolean;
   group: BioGroup | null;
+  regions: string[];
+  regionIds: readonly string[];
   reproduction: string;
   progress: number;
   flags: DiscoveryFlags;
@@ -68,6 +72,8 @@ export function catalogView(book: Partial<Record<SpeciesId, DiscoveryFlags>>): C
       abilities: flags.interacted ? species.abilities : [],
       domesticable: known ? species.domesticable : false,
       group: known ? species.group : null,
+      regions: flags.habitat ? species.regions.map(r => regionById(r).name) : [],
+      regionIds: known ? species.regions : [],
       reproduction: !flags.behavior ? "—" : species.reproduction === "viviparous" ? "Vivíparo" : species.reproduction === "oviparous" ? "Ovíparo" : "Ovos (regra de fantasia)",
       progress: researchProgress(flags),
       flags,

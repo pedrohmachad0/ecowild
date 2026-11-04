@@ -17,6 +17,10 @@ Stack: Babylon.js 7.54.3, TypeScript estrito, Vite 6, HTML/CSS e Vitest. Sem ser
 
 O orquestrador ainda é grande, assim como a simulação. A extração de interação, schema, touch e painéis reduz responsabilidades; separar percepção/navegação é o próximo passo, sem substituir o motor atual.
 
+## Regiões (expansão)
+
+`world/region.ts` registra regiões (`RegionDef`) e mantém a ativa; `world/regions/mata.ts` e `vereda.ts` são dados registrados em `regions/index.ts`. Terreno, layout, minimapa, câmera (`worldVolumes`), renderização (`forest.ts`, com `treeShapes.ts` compartilhado) e simulação leem a região ativa. A simulação mantém a região ativa em `creatures`/`props` e as outras congeladas em `away`/`awayProps`; `travel()` troca as listas, move os companheiros que seguem e reposiciona o jogador. `EcoWildGame` detecta `sim.region !== loadedRegion` e reconstrói a cena. Espécies descrevem comportamento por dados (`traits`, `predators`, `feeds`, `assist`). Guia passo a passo: [EXPANDIR](EXPANDIR.md).
+
 ## Mundo vivo (04/11/2026)
 
 - `world/clock.ts`: dia de 600 s derivado de `seconds`; períodos, luz e janelas de atividade. `render/forest.ts#setTime` ajusta sol, céu, névoa, lanterna, fogueira e vaga-lumes; as luzes existem desde a construção para que os materiais congelados compilem com elas.

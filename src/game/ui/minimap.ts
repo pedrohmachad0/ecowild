@@ -1,6 +1,7 @@
 import { CONFIG } from "../config.ts";
-import { CAMP, NESTS, SPAWNS, rockList, treeList } from "../world/layout.ts";
-import { heightAt, TRAIL } from "../world/terrain.ts";
+import { moundList, rockList, treeList } from "../world/layout.ts";
+import { heightAt } from "../world/terrain.ts";
+import { region } from "../world/region.ts";
 import type { HudSnapshot } from "../EcoWildGame.ts";
 
 /** Species colours shared by the map legend and the diary chips. */
@@ -15,6 +16,10 @@ export const SPECIES_COLOR: Record<string, string> = {
   fish: "#c4ccc8",
   tegu: "#3a3934",
   mosslight: "#a8f5c4",
+  anteater: "#6e5a48",
+  seriema: "#cfc2a0",
+  manedwolf: "#c9632f",
+  brasalume: "#ffb347",
 };
 
 const R = CONFIG.worldRadius;
@@ -22,55 +27,55 @@ const fmt = (n: number) => Math.round(n * 10) / 10;
 
 /** Shoreline radius per angle, from the same terrain function the simulation uses. */
 export function shorePolygon(samples = 48): { x: number; z: number }[] {
+  const w = region().water;
   const points: { x: number; z: number }[] = [];
   for (let i = 0; i < samples; i++) {
     const a = (i / samples) * Math.PI * 2;
     const dx = Math.cos(a), dz = Math.sin(a);
-    let low = 0, high = 14;
+    let low = 0, high = w.disc + 3;
     for (let k = 0; k < 14; k++) {
       const mid = (low + high) / 2;
-      if (heightAt(CONFIG.lakeX + dx * mid, CONFIG.lakeZ + dz * mid) < CONFIG.waterY) low = mid;
+      if (heightAt(w.x + dx * mid, w.z + dz * mid) < CONFIG.waterY) low = mid;
       else high = mid;
     }
-    points.push({ x: CONFIG.lakeX + dx * low, z: CONFIG.lakeZ + dz * low });
+    points.push({ x: w.x + dx * low, z: w.z + dz * low });
   }
   return points;
 }
 
-let staticLayer: string | null = null;
+const staticLayers = new Map<string, string>();
 
-/** Terrain, water, trail and landmarks never change during a session: build once. */
+/** Terrain, water, trail and landmarks never change while a region is loaded: build once per region. */
 function baseLayer(): string {
-  if (staticLayer) return staticLayer;
+  const def = region();
+  const cached = staticLayers.get(def.id);
+  if (cached) return cached;
   const shore = shorePolygon().map(p => `${fmt(p.x)},${fmt(p.z)}`).join(" ");
-  const trail = TRAIL.map(([x, z]) => `${x},${z}`).join(" ");
+  const trail = def.trail.map(([x, z]) => `${x},${z}`).join(" ");
   const trees = treeList().map(t => `<circle cx="${t.x}" cy="${t.z}" r="1.5" class="mm-tree"/>`).join("");
   const rocks = rockList().map(r => `<circle cx="${r.x}" cy="${r.z}" r="${fmt(r.r + 0.3)}" class="mm-rock"/>`).join("");
-  const t = SPAWNS.territory;
-  const grove = { x: -9, z: -7 };
-  staticLayer = `<circle cx="0" cy="0" r="${R}" class="mm-ground"/>`
-    + `<circle cx="${t.x}" cy="${t.z}" r="${t.r}" class="mm-territory"/>`
-    + `<circle cx="${grove.x}" cy="${grove.z}" r="5.5" class="mm-grove"/>`
+  const mounds = moundList().map(m => `<circle cx="${m.x}" cy="${m.z}" r="${fmt(m.r + 0.4)}" class="mm-mound"/>`).join("");
+  const t = def.territory;
+  const layer = `<circle cx="0" cy="0" r="${R}" class="mm-ground mm-${def.id}"/>`
+    + (t ? `<circle cx="${t.x}" cy="${t.z}" r="${t.r}" class="mm-territory"/>` : "")
+    + def.highlights.map(h => `<circle cx="${h.x}" cy="${h.z}" r="${h.r}" class="mm-grove"/>`).join("")
     + `<polygon points="${shore}" class="mm-water"/>`
     + `<polyline points="${trail}" class="mm-trail"/>`
-    + trees + rocks
-    + NESTS.map(n => `<circle cx="${n.x}" cy="${n.z}" r="1.3" class="mm-nest"/>`).join("")
-    + SPAWNS.armadillo.map(b => `<circle cx="${b.x}" cy="${b.z}" r="0.9" class="mm-burrow"/>`).join("")
-    + `<rect x="${CAMP.x - 1.4}" y="${CAMP.z - 1.4}" width="2.8" height="2.8" rx="0.5" class="mm-camp"/>`
+    + trees + rocks + mounds
+    + def.nests.map(n => `<circle cx="${n.x}" cy="${n.z}" r="1.3" class="mm-nest"/>`).join("")
+    + def.burrows.map(b => `<circle cx="${b.x}" cy="${b.z}" r="0.9" class="mm-burrow"/>`).join("")
+    + `<rect x="${def.camp.x - 1.4}" y="${def.camp.z - 1.4}" width="2.8" height="2.8" rx="0.5" class="mm-camp"/>`
+    + def.exits.map(e => `<path d="M${e.x - 1.6},${e.z - 1.6} L${e.x + 1.6},${e.z} L${e.x - 1.6},${e.z + 1.6} Z" class="mm-exit" transform="rotate(${e.x > 0 ? 0 : 180} ${e.x} ${e.z})"/>`).join("")
     + `<circle cx="0" cy="0" r="${R}" class="mm-border"/>`
-    + `<text x="${CONFIG.lakeX}" y="${CONFIG.lakeZ + 0.8}" class="mm-label">Lago</text>`
-    + `<text x="${grove.x + 1}" y="${grove.z + 8}" class="mm-label">Bosque do orvalho</text>`
-    + `<text x="${t.x - 1}" y="${t.z - t.r - 1}" class="mm-label mm-danger">Lobos</text>`
-    + `<text x="${CAMP.x + 1}" y="${CAMP.z + 4.2}" class="mm-label">Acampamento (clareira)</text>`
-    + `<text x="${NESTS[0].x + 5}" y="${NESTS[0].z - 2.6}" class="mm-label">Musgarins</text>`
-    + `<text x="${SPAWNS.armadillo[0].x - 1}" y="${SPAWNS.armadillo[0].z + 3.4}" class="mm-label">Tocas</text>`
+    + def.labels.map(l => `<text x="${l.x}" y="${l.z}" class="mm-label${l.danger ? " mm-danger" : ""}">${l.text}</text>`).join("")
     + `<text x="0" y="${-R + 3.4}" class="mm-north">N</text>`;
-  return staticLayer;
+  staticLayers.set(def.id, layer);
+  return layer;
 }
 
 /** Graphic field guide. Only shows animals the diary already knows. */
 export function minimapSvg(hud: HudSnapshot, compact = false): string {
-  const fruit = hud.props.filter(p => p.available).map(p => `<circle cx="${p.x}" cy="${p.z}" r="${p.kind === "berry" ? 0.7 : 0.9}" class="${p.kind === "glow" ? "mm-glow" : p.kind === "egg" ? "mm-egg" : "mm-berry"}"/>`).join("");
+  const fruit = hud.props.filter(p => p.available).map(p => `<circle cx="${p.x}" cy="${p.z}" r="${p.kind === "berry" ? 0.7 : 0.9}" class="${p.kind === "glow" ? "mm-glow" : p.kind === "egg" ? "mm-egg" : p.kind === "wolfapple" ? "mm-wolfapple" : "mm-berry"}"/>`).join("");
   const animals = hud.map.filter(c => c.known || c.tamed).map(c => {
     const label = c.tamed ? "companheira" : c.speciesId;
     return `<circle cx="${fmt(c.x)}" cy="${fmt(c.z)}" r="${c.tamed ? 1.4 : 1.1}" fill="${SPECIES_COLOR[c.speciesId] ?? "#fff"}" class="mm-animal${c.tamed ? " mm-pet" : ""}"><title>${label}</title></circle>`;

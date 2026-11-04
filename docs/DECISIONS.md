@@ -88,3 +88,17 @@ ADR-038: **Domesticação assistida exige ação jogável.** A confiança do mus
 ADR-039: **Fotos como dados do save.** JPEG 224×140 copiado do canvas logo após o render (sem `preserveDrawingBuffer`), validado como data URL de imagem ≤ 40 KB. Uma por espécie, substituível.
 
 ADR-040: **Defesa leve sem dano.** Afugentar custa energia e tem recarga; não fere animais, assusta também os não agressivos e reduz a confiança de domesticáveis próximos. Confronto não é a única solução: o pulso calmo e o recuo continuam válidos.
+
+## Expansão autorizada — 04/11/2026
+
+ADR-041: **Expansão por regiões autorizada pelo criador.** O criador pediu explicitamente que o jogo cresça além da Mata. ADR-020 (vertical slice antes de expansão) cumpriu seu papel: a Mata tem exploração, fauna, vínculo, catálogo, save/load e mobile. A expansão segue por regiões conectadas, uma carregada por vez.
+
+ADR-042: **Registro de regiões e região ativa.** `world/region.ts` mantém o registro e a região ativa (singleton documentado, porque só uma cena existe por vez). `terrain.ts`/`layout.ts` delegam para ela e preservam a API antiga; as constantes da Mata continuam exportadas para chamadores e testes antigos. Trocar a região exige reconstruir a cena (`rebuildWorld`), nunca misturar geometria de duas regiões.
+
+ADR-043: **Simulação com regiões congeladas.** `sim.creatures`/`sim.props` são da região ativa; `sim.away`/`sim.awayProps` guardam as outras intactas. Companheiros que seguem viajam junto; os em Esperar ficam. O ovo choca no acampamento da Mata mesmo com o jogador fora, e o filhote espera lá.
+
+ADR-044: **Comportamento de espécie como dados.** `traits`, `predators`, `feeds`, `regions` e `assist` substituem verificações por ID na simulação. Comportamentos de temperamento (territorial ataca, por exemplo) usam o temperamento, não o nome da espécie.
+
+ADR-045: **Save v3.** Acrescenta `region`, `visited`, `inventory.wolfapple` e `region` opcional por criatura (só quando difere da região de origem). v1 e v2 migram em memória. IDs válidos vêm do registro de regiões.
+
+ADR-046: **Vereda do Cerrado como primeira expansão.** Bioma brasileiro real, com espécies reais (tamanduá-bandeira, seriema, lobo-guará), e uma criatura de fantasia (brasalume) cuja domesticação exige outro pet (musgarim), mostrando a compatibilidade entre pets prevista na mecânica 3. O lobo-guará não é agressivo, em contraste educativo com o lobo-cinzento. Pode ser trocada ou complementada por outro bioma sem mudar a arquitetura.

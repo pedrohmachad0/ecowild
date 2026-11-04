@@ -13,6 +13,7 @@ import { buildCapybara, buildRabbit } from "./creatures/herbivores.ts";
 import { buildWolf, buildAuryn } from "./creatures/canids.ts";
 import { buildEagle } from "./creatures/eagle.ts";
 import { buildArmadillo, buildFish, buildMosslight, buildTegu, buildToad } from "./creatures/smallfauna.ts";
+import { buildAnteater, buildBrasalume, buildManedWolf, buildSeriema } from "./creatures/cerrado.ts";
 export type { Rig } from "./rig.ts";
 export { animateRig } from "./creatures/animate.ts";
 
@@ -64,6 +65,7 @@ export function buildCreature(scene: Scene, id: string, species: SpeciesId): Rig
   const builders: Record<SpeciesId, (scene: Scene, id: string) => Rig> = {
     capybara: buildCapybara, rabbit: buildRabbit, wolf: buildWolf, eagle: buildEagle, auryn: buildAuryn,
     armadillo: buildArmadillo, toad: buildToad, fish: buildFish, tegu: buildTegu, mosslight: buildMosslight,
+    anteater: buildAnteater, seriema: buildSeriema, manedwolf: buildManedWolf, brasalume: buildBrasalume,
   };
   const rig = builders[species](scene, id);
   // Hatchlings are visibly young.
