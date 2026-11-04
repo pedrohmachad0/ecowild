@@ -13,6 +13,8 @@ import { loadPreferences, storePreferences } from "./persistence/preferences.ts"
 import { animateRig, buildCreature, buildPlayer } from "./render/actors.ts";
 import type { Rig } from "./render/actors.ts";
 import { buildForest } from "./render/forest.ts";
+import { dressRig } from "./render/glbModels.ts";
+import type { ModelAsset, ModelKey } from "./data/models.ts";
 import type { Forest } from "./render/forest.ts";
 import { commandPet, createSim, eatBerry, petSnapshot, petViews, recordPhoto, shout, stepSim, toSave, trustSnapshot, usePetAbility } from "./sim/simulation.ts";
 import type { PetView } from "./sim/simulation.ts";
@@ -415,8 +417,11 @@ export class EcoWildGame {
   private buildActors(): void {
     if (!this.scene || !this.sim) return;
     this.playerRig = buildPlayer(this.scene);
+    void dressRig(this.scene, this.playerRig, "player");
     for (const c of this.sim.creatures) {
-      this.rigs.set(c.id, buildCreature(this.scene, c.id, c.speciesId));
+      const rig = buildCreature(this.scene, c.id, c.speciesId);
+      this.rigs.set(c.id, rig);
+      void dressRig(this.scene, rig, c.speciesId);
     }
   }
 
@@ -598,6 +603,7 @@ export class EcoWildGame {
       if (!rig && this.scene) {
         rig = buildCreature(this.scene, c.id, c.speciesId);
         this.rigs.set(c.id, rig);
+        void dressRig(this.scene, rig, c.speciesId);
         if (shadows) for (const mesh of rig.root.getChildMeshes()) shadows.addShadowCaster(mesh, false);
       }
       if (!rig) continue;
@@ -754,6 +760,14 @@ export class EcoWildGame {
       getSpeed: () => this.sim?.player.speed ?? 0,
       setKeys: (codes: string[]) => this.input.setKeys(codes),
       getPos: () => ({ x: this.sim?.player.x ?? 0, z: this.sim?.player.z ?? 0 }),
+      // QA only: dress every rig of a kind with a fixture GLB served by Vite dev.
+      dressFixture: async (key: ModelKey, url: string, asset: ModelAsset) => {
+        if (!this.scene) return 0;
+        const rigs = key === "player" ? [this.playerRig] : this.sim?.creatures.filter(c => c.speciesId === key).map(c => this.rigs.get(c.id)) ?? [];
+        let dressed = 0;
+        for (const rig of rigs) if (rig && await dressRig(this.scene, rig, key, { asset, url })) dressed++;
+        return dressed;
+      },
     };
   }
 
@@ -790,6 +804,7 @@ declare global {
       getSpeed: () => number;
       setKeys: (codes: string[]) => void;
       getPos: () => { x: number; z: number };
+      dressFixture: (key: ModelKey, url: string, asset: ModelAsset) => Promise<number>;
     };
   }
 }

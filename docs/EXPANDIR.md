@@ -42,6 +42,26 @@ Novos tipos de árvore entram em `world/treeShapes.ts`; renderizador e câmera u
 
 Se a espécie precisar de uma locomoção realmente nova (planar, escavar túneis, mergulhar), crie um traço novo e trate-o em `updateCreature`. Não use `if (speciesId === …)`.
 
+## Modelos 3D externos (Higgsfield ou outra ferramenta)
+
+O jogo aceita GLB opcionais por cima do modelo procedural. O procedural continua existindo: a animação do corpo (respiração, pulos, poses de descanso, medo) segue funcionando, e se o arquivo faltar ou falhar o animal aparece como antes. Patas, cauda e orelhas só animam no procedural; um GLB estático anima como um bloco preso ao corpo.
+
+1. **Gere o modelo.** O conector do Higgsfield nesta sessão só lê o catálogo; a geração é feita por você no site. Sugestão para combinar com o estilo do jogo:
+   - **Meshy 6 Text to 3D**, `model_type: lowpoly`, `mode: full` (com textura), `symmetry_mode: on`, `target_polycount` entre 3.000 e 6.000;
+   - ou **Meshy 7 Image to 3D** a partir de uma ilustração original sua;
+   - pose neutra, em pé, de lado, fundo limpo. Rigging automático é pensado para humanoides; para animais, deixe desligado.
+2. **Confira a licença** nos termos do seu plano: se permite uso no jogo, se exige atribuição e se o plano gratuito tem restrições. **Sem licença verificada, o arquivo não entra** (AGENTS.md).
+3. **Coloque o arquivo** em `public/models/<nome>.glb`.
+4. **Registre o modelo** em `src/game/data/models.ts` (`MODEL_ASSETS`): `file`, `scale`, `yOffset` (pés no chão), `rotationY` (olhando para +Z) e `license` com origem, data e termos.
+5. **Documente** o arquivo em `docs/ASSETS.md`, com nome, origem e licença.
+6. **Rode `npm test`.** `tests/models.test.ts` recusa:
+   - arquivo sem registro, ou registro sem arquivo;
+   - mais de 700 KB ou mais de 8.000 triângulos (`MODEL_BUDGET`);
+   - licença vazia ou ausência em ASSETS.md.
+7. **Ajuste no jogo.** `npm run dev` e conferir escala e altura no Observar (Q). O cache offline tem orçamento de 8 MiB, hoje com cerca de 5,6 MiB usados: cada modelo conta.
+
+Para testar o caminho sem um asset real, use o arquivo de teste `tests/fixtures/box.glb` (gerado por `scripts/make-test-glb.mjs`) com `window.__controlsTest.dressFixture(...)` no `npm run dev`.
+
 ## Itens e save
 
 Item novo de bolsa:
