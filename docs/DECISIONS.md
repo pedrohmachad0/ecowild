@@ -60,3 +60,15 @@ ADR-026: **Arte procedural articulada e modular.** Base `main@2cdacf7` após PR 
 ADR-027: **Câmera por volumes conservadores.** Substituir a antiga aproximação planar por interseções do segmento com cilindros finitos/elipsoides e terreno, criados uma vez conforme a floresta. Recuar imediatamente e suavizar só a extensão sobre a órbita atual; interpolar posição no mundo podia atravessar troncos ao girar. Não é colisão de mesh completa; registrar limites de arbustos, pivô dentro de volume e fidelidade do proxy. Primeira pessoa e pinça preservadas.
 
 ADR-028: **Observar apresenta o encontro, sem conceder progresso.** Q/botão contextual enquadra indivíduo conhecido a até 8 m e acompanha até 12 m, com bloqueio aproximado por cenário. Permite órbita/zoom; movimento, pulo, Q/V e perda do alvo restauram a câmera anterior. Simulação continua e ameaças permanecem; jogador oculto evita tapar a criatura. Nota lateral mostra comportamento e prontidão do vínculo usando limites compartilhados com simulação e prioridade real de coleta/oferta. Diário/confiança mantêm as regras existentes; foco não é salvo e não desbloqueia informações sozinho.
+
+## Interface e companheira — 04/11/2026
+
+ADR-029: **Tokens visuais e HUD por barras.** Cores definidas uma vez em `:root` (fundo, painel, texto, destaque, perigo, vida/energia/água); botões primário/secundário. Vida, energia e água em barras (Água = 100 − sede, para que barra cheia sempre signifique bem-estar). Status do save só em Pausa → Progresso. Rótulos internos (`low`, `FOLLOW`) nunca chegam ao jogador.
+
+ADR-030: **Direções pela convenção do motor.** Norte = −Z, leste = +X (`math.basis`). Textos que descreviam o bosque “a sudoeste” estavam errados e foram corrigidos; `compassWord` e um teste fixam a convenção para textos futuros.
+
+ADR-031: **RETURN distinto de FOLLOW.** Voltar faz o pet correr a 1,5× até o jogador e passar a Seguir ao chegar; antes os dois comandos eram idênticos. Schema v1 inalterado (RETURN já era válido).
+
+ADR-032: **Habilidades da companheira como assistência, não domesticação.** Farejar (TRACK) e Pulso calmo (USE_ABILITY) exigem Auryn vinculada a menos de 6 m e têm recarga; efeitos reais na simulação (marca no mapa, `calm` que suprime fuga de presas e foco de predadores). Não tornam outras espécies domesticáveis. Recargas, `calm` e rastro são estado de execução, fora do save v1, para não exigir novo schema.
+
+ADR-033: **Importação com prévia e backup atômico.** `parseImport` valida tamanho, JSON, versão e estrutura sem tocar no IndexedDB. Confirmar grava a sessão aberta e então importa com `write(data, true)`, que move o principal para o backup na mesma transação e respeita a revisão otimista (conflitos bloqueiam). Restaurar backup desfaz.

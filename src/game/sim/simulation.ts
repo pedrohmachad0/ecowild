@@ -57,9 +57,18 @@ export type SimCreature = {
   rng: number;
   startled: number;
   aiAcc: number;
+  /** Seconds under Auryn's calm pulse (runtime only, not saved). */
+  calm: number;
+  /** Companion ability cooldowns in seconds (runtime only). */
+  abilityCd: { track: number; calm: number };
 };
 
 export type SimToast = { text: string; ttl: number };
+
+/** A temporary lead found by the companion; shown on the map and in the HUD. */
+export type SimTrack = { x: number; z: number; label: string; ttl: number };
+
+export type PetAbility = "TRACK" | "CALM";
 
 export type Simulation = {
   player: {
@@ -90,6 +99,9 @@ export type Simulation = {
   time: number;
   toastCd: Record<string, number>;
   petName: string;
+  /** 0 = no hostile animal close, 1 = a wolf is about to bite. */
+  threat: number;
+  track: SimTrack | null;
 };
 
 function rngNext(c: SimCreature): number {
@@ -144,6 +156,8 @@ function makeCreature(
     dip: 0,
     rng: id.split("").reduce((a, ch) => a + ch.charCodeAt(0) * 17, 11),
     startled: 0,
+    calm: 0,
+    abilityCd: { track: 0, calm: 0 },
     aiAcc: (id.charCodeAt(id.length - 1) % 8) / 64,
   };
 }
@@ -185,6 +199,8 @@ export function createSim(save: SaveV1 | null): Simulation {
     time: 0,
     toastCd: {},
     petName: "Auryn",
+    threat: 0,
+    track: null,
   };
   if (save) applySave(sim, save);
   for (const c of sim.creatures) c.y = c.speciesId === "eagle" ? 8.5 : groundY(c);
@@ -406,13 +422,19 @@ function updatePlayer(sim: Simulation, input: SimInput, dt: number): void {
   if (p.hurtCd > 0) p.hurtCd -= dt;
   else if (p.health < 100) p.health = Math.min(100, p.health + 3 * dt);
 
-  if (input.useBerryEdge && sim.inventory.berries > 0) {
-    sim.inventory.berries -= 1;
-    p.energy = Math.min(100, p.energy + 28);
-    p.health = Math.min(100, p.health + 16);
-    p.thirst = Math.max(0, p.thirst - 10);
-    toast(sim, "eat", "Você comeu um fruto da mata.", 1.2);
-  }
+  if (input.useBerryEdge) eatBerry(sim);
+}
+
+/** Single rule for eating, shared by the F key, the bag button and tests. */
+export function eatBerry(sim: Simulation): boolean {
+  if (sim.inventory.berries <= 0) return false;
+  const p = sim.player;
+  sim.inventory.berries -= 1;
+  p.energy = Math.min(100, p.energy + 28);
+  p.health = Math.min(100, p.health + 16);
+  p.thirst = Math.max(0, p.thirst - 10);
+  toast(sim, "eat", "Você comeu um fruto da mata.", 1.2);
+  return true;
 }
 
 function threatOf(sim: Simulation, c: SimCreature): { x: number; z: number; d: number } | null {
@@ -442,6 +464,9 @@ function updateCreature(sim: Simulation, c: SimCreature, dt: number): void {
   c.phase += dt * (c.moving ? 7 : 1.5);
   c.attackCd = Math.max(0, c.attackCd - dt);
   c.startled = Math.max(0, c.startled - dt);
+  c.calm = Math.max(0, c.calm - dt);
+  c.abilityCd.track = Math.max(0, c.abilityCd.track - dt);
+  c.abilityCd.calm = Math.max(0, c.abilityCd.calm - dt);
   c.hunger = Math.min(1, c.hunger + dt * 0.01);
   c.thirst = Math.min(1, c.thirst + dt * 0.008);
   if (c.state === "REST" || c.state === "IDLE") c.energy = Math.min(1, c.energy + dt * 0.08);
@@ -449,7 +474,7 @@ function updateCreature(sim: Simulation, c: SimCreature, dt: number): void {
 
   const playerDist = Math.hypot(sim.player.x - c.x, sim.player.z - c.z);
   let threat = threatOf(sim, c);
-  const scaredByPlayer = (profile.temperament === "skittish" || (sim.player.sprinting && (profile.temperament === "calm" || profile.temperament === "curious"))) && playerDist < profile.fleeRadius;
+  const scaredByPlayer = c.calm <= 0 && (profile.temperament === "skittish" || (sim.player.sprinting && (profile.temperament === "calm" || profile.temperament === "curious"))) && playerDist < profile.fleeRadius;
   if (scaredByPlayer && (!threat || playerDist < threat.d)) threat = { x: sim.player.x, z: sim.player.z, d: playerDist };
   if (threat && threat.d < 8) c.fear = Math.min(1, c.fear + dt * 0.9);
   else c.fear = Math.max(0, c.fear - dt * 0.3);
@@ -482,6 +507,7 @@ function updateCreature(sim: Simulation, c: SimCreature, dt: number): void {
       tamed: c.tamed,
       command: c.tamed ? c.command : null,
       preferIdle: rngNext(c) > 0.72,
+      calmed: c.calm > 0,
     });
   }
 
@@ -532,6 +558,7 @@ function updateCreature(sim: Simulation, c: SimCreature, dt: number): void {
   } else if (c.state === "FOLLOW_OWNER" || c.state === "PROTECT_OWNER") {
     const back = basis(sim.player.yaw);
     const dist = c.command === "PROTECT" ? 1.3 : 1.8;
+    if (c.command === "RETURN") speed = profile.speed * 1.5;
     c.tx = sim.player.x - back.fx * dist;
     c.tz = sim.player.z - back.fz * dist;
     if (c.command === "PROTECT") {
@@ -582,6 +609,10 @@ function updateCreature(sim: Simulation, c: SimCreature, dt: number): void {
       toast(sim, "recover", `${c.name || "Auryn"} contornou um obstáculo e voltou para perto.`, 6);
     }
     c.xp += dt;
+    if (c.command === "RETURN" && Math.hypot(sim.player.x - c.x, sim.player.z - c.z) < 2.6) {
+      c.command = "FOLLOW";
+      toast(sim, "returned", `${c.name || "Auryn"} voltou para o seu lado e segue você.`, 2);
+    }
   }
 
   if (c.speciesId === "wolf" && (c.state === "DEFEND" || (c.state === "CHASE" && playerDist < 2.2))) {
@@ -700,6 +731,11 @@ function updateWorld(sim: Simulation, input: SimInput, dt: number): void {
   }
 
   if (input.discover) updateDiscoveries(sim, dt);
+  updateThreat(sim);
+  if (sim.track) {
+    sim.track.ttl -= dt;
+    if (sim.track.ttl <= 0 || Math.hypot(sim.track.x - sim.player.x, sim.track.z - sim.player.z) < 2.2) sim.track = null;
+  }
   sim.prompt = makePrompt(sim);
   sim.time += dt;
 }
@@ -753,12 +789,85 @@ function makePrompt(sim: Simulation): string {
     const c = target.creature;
     return c.trust >= BOND_RULES.trust && c.observe >= BOND_RULES.observation && c.fear <= BOND_RULES.fear && !sim.player.sprinting ? "E · oferecer frutiluz" : "Observe sem se mover. Espere confiança 58 e tranquilidade antes de oferecer.";
   }
-  if (target.kind === "observe") return `E · observar ${SPECIES_BY_ID[target.creature.speciesId].name.toLowerCase()}`;
+  if (target.kind === "observe") return `E · anotar encontro: ${SPECIES_BY_ID[target.creature.speciesId].name}`;
   if (target.kind === "drink") return "E · beber no lago";
   const trust = trustSnapshot(sim);
   if (trust?.near) return sim.player.sprinting ? "Devagar. Correr desfaz a confiança da Auryn." : `Confiança ${Math.round(trust.value)}. Observe parada; a Auryn se aproxima com confiança.`;
   if (sim.player.swimming) return "Água funda. Nade até a margem.";
   return "";
+}
+
+/** Readable danger signal: territorial wolves warn before they bite. */
+function updateThreat(sim: Simulation): void {
+  let threat = 0;
+  for (const c of sim.creatures) {
+    if (c.speciesId !== "wolf" || c.tamed || c.calm > 0) continue;
+    if (c.state !== "DEFEND" && c.state !== "CHASE") continue;
+    const d = Math.hypot(c.x - sim.player.x, c.z - sim.player.z);
+    if (d < 9) threat = Math.max(threat, clamp(1 - (d - 1.2) / 7.8, 0, 1));
+  }
+  if (threat > 0.25) toast(sim, "growl", "Um lobo rosna e baixa a cabeça. Recue para fora do território a noroeste.", 9);
+  sim.threat = threat;
+}
+
+const COMPASS = ["norte", "nordeste", "leste", "sudeste", "sul", "sudoeste", "oeste", "noroeste"];
+/** World north is −Z and east is +X. */
+export function compassWord(dx: number, dz: number): string {
+  const angle = Math.atan2(dx, -dz);
+  const index = Math.round(((angle + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 4)) % 8;
+  return COMPASS[index]!;
+}
+
+/**
+ * Companion abilities (USE_ABILITY / TRACK of the spec). Both require the bonded
+ * Auryn near the player, have cooldowns and real effects on the simulation.
+ * They help find and approach other species; they do not tame them.
+ */
+export function usePetAbility(sim: Simulation, ability: PetAbility): boolean {
+  const pet = sim.creatures.find(c => c.speciesId === "auryn" && c.tamed);
+  if (!pet) return false;
+  const name = pet.name || "Auryn";
+  const near = Math.hypot(pet.x - sim.player.x, pet.z - sim.player.z) < 6;
+  if (!near) { toast(sim, "ability-far", `${name} está longe demais. Chame-a de volta primeiro.`, 1.5); return false; }
+  if (ability === "TRACK") {
+    if (pet.abilityCd.track > 0) { toast(sim, "track-cd", `${name} ainda está farejando (${Math.ceil(pet.abilityCd.track)} s).`, 1); return false; }
+    pet.abilityCd.track = 8;
+    const lead = trackTarget(sim);
+    if (!lead) { sim.track = null; toast(sim, "track", `${name} fareja o ar, mas não encontra rastros novos.`, 1); return true; }
+    sim.track = { ...lead, ttl: 30 };
+    const dist = Math.round(Math.hypot(lead.x - sim.player.x, lead.z - sim.player.z));
+    toast(sim, "track", `${name} encontrou um rastro: ${lead.label}, ${dist} m a ${compassWord(lead.x - sim.player.x, lead.z - sim.player.z)}. Veja no mapa.`, 1);
+    return true;
+  }
+  if (pet.abilityCd.calm > 0) { toast(sim, "calm-cd", `O pulso calmo recarrega em ${Math.ceil(pet.abilityCd.calm)} s.`, 1); return false; }
+  pet.abilityCd.calm = 25;
+  let calmed = 0;
+  for (const c of sim.creatures) {
+    if (c === pet || c.speciesId === "eagle") continue;
+    if (Math.hypot(c.x - pet.x, c.z - pet.z) > 9) continue;
+    c.calm = 8; c.fear = Math.min(c.fear, 0.1); c.aiAcc = 1 / CONFIG.aiHz;
+    calmed++;
+  }
+  pet.xp += 2;
+  toast(sim, "calm", calmed ? `${name} emitiu o pulso calmo: ${calmed} animal(is) próximos ficaram tranquilos por alguns segundos.` : `${name} emitiu o pulso calmo, mas não há animais por perto.`, 1);
+  return true;
+}
+
+function trackTarget(sim: Simulation): { x: number; z: number; label: string } | null {
+  let best: { x: number; z: number; label: string; d: number } | null = null;
+  const consider = (x: number, z: number, label: string) => {
+    const d = Math.hypot(x - sim.player.x, z - sim.player.z);
+    if (d > 3 && (!best || d < best.d)) best = { x, z, label, d };
+  };
+  for (const c of sim.creatures) {
+    if (c.tamed || c.speciesId === "auryn") continue;
+    const flags = sim.discoveries[c.speciesId];
+    const complete = flags?.seen && flags.behavior && flags.interacted;
+    if (!complete) consider(c.x, c.z, flags?.seen ? SPECIES_BY_ID[c.speciesId].name.toLowerCase() : "pegadas desconhecidas");
+  }
+  if (best) return best;
+  for (const p of sim.props) if (!p.taken && p.depleted <= 0) consider(p.x, p.z, p.kind === "glow" ? "frutiluz" : "fruto da mata");
+  return best;
 }
 
 export function stepSim(sim: Simulation, input: SimInput, dt: number): void {
@@ -799,6 +908,6 @@ export function commandPet(sim: Simulation, command: PetCommand): void {
   if (!pet) return;
   pet.command = command;
   pet.aiAcc = 1 / CONFIG.aiHz;
-  const labels = { FOLLOW: "seguir", STAY: "esperar", RETURN: "voltar", PROTECT: "proteger" };
-  toast(sim, "cmd-" + command, `${pet.name || "Auryn"} vai ${labels[command]}.`, 0.4);
+  const labels = { FOLLOW: "vai seguir você", STAY: "vai esperar aqui", RETURN: "está voltando depressa", PROTECT: "vai proteger você" };
+  toast(sim, "cmd-" + command, `${pet.name || "Auryn"} ${labels[command]}.`, 0.4);
 }

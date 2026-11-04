@@ -61,7 +61,7 @@ with tempfile.TemporaryDirectory(prefix='ecowild-pwa-') as tmp:
         assert 'Luz' in page.locator('#sheet').inner_text()
         result['update_waiting_multitab_guard_and_save']=True
         context.set_offline(True);page.reload();page.locator('#resume').click(timeout=60000)
-        page.locator('#open-inventory').click();assert 'Fruto da mata: 2/20' in page.locator('#sheet').inner_text()
+        page.locator('#open-inventory').click();assert 'Fruto da mata 2/20' in page.locator('#sheet').inner_text()
         assert page.title()=='EcoWild · atualização testada'
         result['updated_offline_no_stale_html']=True
         caches=page.evaluate('caches.keys()');assert len(caches)<=2

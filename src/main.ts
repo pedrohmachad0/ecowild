@@ -2,7 +2,9 @@ import { EcoWildGame } from "./game/EcoWildGame.ts";
 import type { HudSnapshot } from "./game/EcoWildGame.ts";
 import type { PetCommand, QualityName } from "./game/types.ts";
 import { bindTouch } from "./game/input/touch.ts";
-import { panelHtml } from "./game/ui/panels.ts";
+import { COMMAND_LABEL, panelHtml } from "./game/ui/panels.ts";
+import type { CatalogFilter } from "./game/ui/panels.ts";
+import type { PetAbility } from "./game/sim/simulation.ts";
 import { bindProgress } from "./game/ui/progress.ts";
 import { initPwa } from "./pwa.ts";
 import "./style.css";
@@ -14,6 +16,7 @@ const vitals = must("#vitals"), promptEl = must("#prompt"), toasts = must("#toas
 const sheet = must("#sheet"), touch = must("#touch-controls"), playingBar = must("#playing-bar");
 const pwaInfo = must("#pwa-info");
 let lastSheet = "", panelOpen = false, touchActive = false;
+let catalogFilter: CatalogFilter = "all";
 let returnFocus: HTMLElement | null = null;
 const lifecycle = new AbortController();
 const game = new EcoWildGame(canvas, {
@@ -64,13 +67,15 @@ function render(hud: HudSnapshot): void {
   enter.disabled = !hud.ready;
   must<HTMLButtonElement>("#manage-progress").disabled = !hud.ready;
   enter.textContent = hud.hasSave ? "Começar novo jogo" : "Entrar na mata";
+  enter.className = hud.hasSave ? "secondary" : "primary";
   must("#load-status").textContent = hud.saveStatus;
-  must("#save-status").textContent = hud.saveStatus;
+  const saveStatus = sheet.querySelector("#save-status");
+  if (saveStatus) saveStatus.textContent = hud.saveStatus;
   playingBar.hidden = !hud.playing;
   const nextTouch = hud.playing && hud.panel === "none" && coarse();
   if (!nextTouch && touchActive) touchBinding.clear();
   touchActive = nextTouch; touch.hidden = !nextTouch;
-  vitals.textContent = hud.playing ? `Diário ${hud.discovered}/${hud.species} · Vida ${Math.round(hud.health)} · Energia ${Math.round(hud.energy)} · Sede ${Math.round(hud.thirst)}` : "";
+  renderVitals(hud);
   promptEl.hidden = !hud.prompt || !hud.playing;
   promptEl.textContent = coarse() ? hud.prompt.replace(/^E ·/, "Interagir ·") : hud.prompt;
   const encounter = hud.encounter;
@@ -95,13 +100,15 @@ function render(hud: HudSnapshot): void {
     playingBar.inert = open; canvas.inert = open;
     if (!open) returnFocus?.focus();
   }
-  const sig = [hud.panel, hud.inventory.berries, hud.inventory.glowfruit, hud.pet?.name, hud.pet?.command, hud.catalog.map(c => c.progress).join(","), hud.quality].join("|");
+  const abilities = hud.abilities ? [hud.abilities.near, Math.ceil(hud.abilities.track), Math.ceil(hud.abilities.calm)].join(",") : "";
+  const sig = [hud.panel, catalogFilter, hud.inventory.berries, hud.inventory.glowfruit, hud.pet?.name, hud.pet?.command, hud.catalog.map(c => c.progress).join(","), hud.quality, hud.tier, hud.camera, abilities, hud.track?.label].join("|");
   sheet.hidden = !open;
   if (sig !== lastSheet) {
     lastSheet = sig;
     const focusedId = (document.activeElement as HTMLElement)?.id;
     must("#title").append(pwaInfo);
-    sheet.querySelector<HTMLElement>("[data-body]")!.innerHTML = panelHtml(hud);
+    sheet.querySelector<HTMLElement>("[data-body]")!.innerHTML = panelHtml(hud, { catalogFilter, touch: coarse() });
+    sheet.dataset.panel = hud.panel;
     if (hud.panel === "pause") sheet.append(pwaInfo);
     wireSheet();
     if (open && !panelOpen) must<HTMLButtonElement>("#close-sheet").focus();
@@ -118,6 +125,37 @@ function wireSheet(): void {
   sheet.querySelector<HTMLInputElement>("#deadzone")?.addEventListener("input", e => game.setDeadzone(Number((e.target as HTMLInputElement).value)));
   sheet.querySelector("#rename-pet")?.addEventListener("click", () => { game.renamePet(sheet.querySelector<HTMLInputElement>("#pet-name")!.value); void game.saveNow(); });
   sheet.querySelectorAll<HTMLButtonElement>("[data-pet]").forEach(button => button.addEventListener("click", () => game.command(button.dataset.pet as PetCommand)));
+  sheet.querySelectorAll<HTMLButtonElement>("[data-ability]").forEach(button => button.addEventListener("click", () => game.petAbility(button.dataset.ability as PetAbility)));
+  sheet.querySelectorAll<HTMLButtonElement>("[data-filter]").forEach(button => button.addEventListener("click", () => {
+    catalogFilter = button.dataset.filter as CatalogFilter;
+    lastSheet = ""; game.refreshHud();
+  }));
+}
+const meters = {
+  health: vitals.querySelector<HTMLElement>('[data-kind="health"]')!,
+  energy: vitals.querySelector<HTMLElement>('[data-kind="energy"]')!,
+  water: vitals.querySelector<HTMLElement>('[data-kind="water"]')!,
+};
+function setMeter(meter: HTMLElement, value: number, label: string): void {
+  const v = Math.max(0, Math.min(100, Math.round(value)));
+  const fill = meter.querySelector<HTMLElement>(".meter-fill")!;
+  const width = `${v}%`;
+  if (fill.style.width !== width) fill.style.width = width;
+  meter.dataset.low = String(v < 30);
+  meter.setAttribute("aria-label", `${label} ${v} de 100`);
+}
+function renderVitals(hud: HudSnapshot): void {
+  if (!hud.playing) return;
+  setMeter(meters.health, hud.health, "Vida");
+  setMeter(meters.energy, hud.energy, "Energia");
+  setMeter(meters.water, 100 - hud.thirst, "Água");
+  must("#journal-chip").textContent = `Diário ${hud.discovered}/${hud.species}`;
+  const petChip = must("#pet-chip");
+  petChip.hidden = !hud.pet;
+  if (hud.pet) petChip.textContent = `${hud.pet.name} · ${COMMAND_LABEL[hud.pet.command]}`;
+  const danger = hud.panel === "none" && hud.threat > 0.05;
+  must("#threat-chip").hidden = !danger;
+  must("#threat-vignette").style.opacity = danger ? String(Math.min(0.85, hud.threat)) : "0";
 }
 function coarse(): boolean { return matchMedia("(pointer: coarse)").matches; }
 function must<T extends HTMLElement = HTMLElement>(selector: string): T {

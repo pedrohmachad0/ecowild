@@ -15,6 +15,7 @@ import {
   VertexData,
   Matrix,
   Quaternion,
+  Texture,
 } from "@babylonjs/core";
 import { CONFIG } from "../config.ts";
 import { grassCount } from "../performance/quality.ts";
@@ -108,10 +109,12 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   ground.freezeWorldMatrix();
   groundMat.freeze();
 
-  const waterMat = mat(scene, "water", "#1f7a86", "#0d3e44");
-  waterMat.alpha = 0.72;
+  // Deep lake teal; low emissive so it reads as water, not a glowing neon disc.
+  const waterMat = mat(scene, "water", "#245f73", "#081e26");
+  waterMat.alpha = 0.8;
   waterMat.backFaceCulling = false;
-  waterMat.specularColor = new Color3(0.35, 0.4, 0.38);
+  waterMat.specularColor = new Color3(0.5, 0.55, 0.55);
+  waterMat.specularPower = 48;
   const water = MeshBuilder.CreateDisc("water", { radius: 11, tessellation: 40 }, scene);
   water.rotation.x = Math.PI / 2;
   water.position.set(CONFIG.lakeX, CONFIG.waterY + 0.04, CONFIG.lakeZ);
@@ -212,9 +215,17 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   post.position.y = 0.65;
   post.material = trunkMat;
   post.isPickable = false;
+  // A thin box keeps the sign visible from behind (a single plane vanished, leaving a bare stick).
+  const backing = MeshBuilder.CreateBox("board-back", { width: 1.46, height: 0.48, depth: 0.05 }, scene);
+  backing.parent = sign;
+  backing.position.y = 1.15;
+  backing.material = trunkMat;
+  backing.isPickable = false;
   const board = MeshBuilder.CreatePlane("board", { width: 1.4, height: 0.42 }, scene);
   board.parent = sign;
-  board.position.y = 1.15;
+  // Plane fronts face local −Z; turning the sign makes the text face the clearing (+Z).
+  board.position.set(0, 1.15, -0.03);
+  sign.rotation.y = Math.PI;
   const signTex = new DynamicTexture("sign-tex", { width: 512, height: 160 }, scene, true);
   const sctx = signTex.getContext();
   sctx.fillStyle = "#1c3a2e";
@@ -223,6 +234,9 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
   sctx.font = "600 54px Georgia";
   sctx.fillText("Mata da Nascente", 28, 98);
   signTex.update();
+  // The right-handed scene mirrors plane UVs; flip U so the text reads correctly.
+  signTex.wrapU = Texture.WRAP_ADDRESSMODE;
+  signTex.uScale = -1;
   const signMat = new StandardMaterial("sign-mat", scene);
   signMat.diffuseTexture = signTex;
   signMat.emissiveColor = new Color3(0.15, 0.15, 0.1);

@@ -1,5 +1,6 @@
 import { axesFromKeys, petFromKeyEdge, stickAxes } from "./actions.ts";
 import type { PetCommand } from "../types.ts";
+import type { PetAbility } from "../sim/simulation.ts";
 
 export type FrameInput = {
   moveX: number;
@@ -20,6 +21,7 @@ export type FrameInput = {
   inventoryEdge: boolean;
   mapEdge: boolean;
   pet: PetCommand | null;
+  ability: PetAbility | null;
 };
 
 const GAME_KEYS = new Set([
@@ -46,7 +48,12 @@ const GAME_KEYS = new Set([
   "Digit2",
   "Digit3",
   "Digit4",
+  "Digit5",
+  "Digit6",
 ]);
+
+/** Panel toggles that also close their own panel while gameplay input is off. */
+const PANEL_KEYS = new Set(["Escape", "KeyC", "KeyM"]);
 
 function emptyHold() {
   return { jump: false, interact: false, sprint: false, camera: false, observe: false, pause: false, catalog: false, inventory: false, map: false, berry: false };
@@ -65,6 +72,7 @@ export class InputManager {
   private stickY = 0;
   private deadzone = 0.16;
   private petQueued: PetCommand | null = null;
+  private abilityQueued: PetAbility | null = null;
   private dragging = new Set<number>();
   private abort = new AbortController();
   private gameplay = false;
@@ -136,26 +144,27 @@ export class InputManager {
       pauseEdge: edge("Escape", "pause"), catalogEdge: edge("KeyC", "catalog"),
       inventoryEdge: edge("Tab", "inventory"), mapEdge: edge("KeyM", "map"),
       pet: this.petQueued ?? petFromKeyEdge(this.prevKeys, keys),
+      ability: this.abilityQueued,
     };
     this.prevKeys = new Set(keys);
     this.prevPad = pad;
     this.holds = { ...emptyHold(), sprint: this.holds.sprint };
     this.lookPx = this.lookPy = this.zoom = 0;
-    this.petQueued = null;
+    this.petQueued = null; this.abilityQueued = null;
     return frame;
   }
   clear = (): void => {
     this.keys.clear(); this.prevKeys.clear(); this.override = null;
     this.dragging.clear(); this.stickX = this.stickY = 0;
     this.holds = emptyHold(); this.prevPad = emptyHold();
-    this.lookPx = this.lookPy = this.zoom = 0; this.petQueued = null;
+    this.lookPx = this.lookPy = this.zoom = 0; this.petQueued = null; this.abilityQueued = null;
   };
   dispose(): void { this.clear(); this.abort.abort(); }
   private onKeyDown = (e: KeyboardEvent): void => {
     const el = e.target instanceof HTMLElement ? e.target : null;
     if (el?.closest("input, textarea, select, [contenteditable=true]")) return;
     // Menus retain native Tab/Space navigation. Escape still closes a panel.
-    if (!this.gameplay && e.code !== "Escape") return;
+    if (!this.gameplay && !PANEL_KEYS.has(e.code)) return;
     if (el?.closest("button") && (e.code === "Space" || e.code === "Enter")) return;
     if (GAME_KEYS.has(e.code)) {
       e.preventDefault();
@@ -166,6 +175,8 @@ export class InputManager {
         const action = actions[e.code];
         if (action) this.holds[action] = true;
         this.petQueued = petFromKeyEdge(this.keys, new Set([...this.keys, e.code])) ?? this.petQueued;
+        if (e.code === "Digit5") this.abilityQueued = "TRACK";
+        if (e.code === "Digit6") this.abilityQueued = "CALM";
       }
       this.keys.add(e.code);
     }

@@ -64,35 +64,53 @@ export function buildCreature(scene: Scene, id: string, species: SpeciesId): Rig
   return builders[species](scene, id);
 }
 
+function limb(scene: Scene, parent: TransformNode, upper: StandardMaterial, lower: StandardMaterial, x: number, y: number, len: number, width: number, lowerLen: number): TransformNode {
+  const pivot = new TransformNode("limb", scene);
+  pivot.parent = parent;
+  pivot.position.set(x, y, 0);
+  const top = MeshBuilder.CreateCylinder("limb-upper", { height: len - lowerLen, diameterTop: width, diameterBottom: width * 0.86, tessellation: 7 }, scene);
+  top.parent = pivot; top.position.y = -(len - lowerLen) / 2; top.material = upper; top.isPickable = false;
+  const end = MeshBuilder.CreateCylinder("limb-lower", { height: lowerLen, diameterTop: width * 0.9, diameterBottom: width * 1.05, tessellation: 7 }, scene);
+  end.parent = pivot; end.position.y = -len + lowerLen / 2; end.material = lower; end.isPickable = false;
+  return pivot;
+}
+
+/** Field explorer: original procedural figure with jointed arms and legs. Faces local +Z. */
 export function buildPlayer(scene: Scene): Rig {
   const root = new TransformNode("player", scene);
-  const cloth = material(scene, "shirt", "#f4efe4");
+  const shirt = material(scene, "shirt", "#e9e1cf");
   const vest = material(scene, "vest", "#2f6b45");
-  const skin = material(scene, "skin", "#e0b088");
-  const boot = material(scene, "boot", "#4a3428");
+  const pants = material(scene, "pants", "#5b4a36");
+  const skin = material(scene, "skin", "#d9a77f");
+  const boot = material(scene, "boot", "#3b2a20");
   const hair = material(scene, "hair", "#3a2a22");
-  sphere(scene, "torso", root, cloth, 0.42, 0.55, 0.28, 0, 1.05, 0);
-  sphere(scene, "vest", root, vest, 0.46, 0.4, 0.22, 0, 1.08, 0.06);
-  sphere(scene, "head", root, skin, 0.28, 0.3, 0.26, 0, 1.52, 0);
-  sphere(scene, "hair", root, hair, 0.3, 0.16, 0.28, 0, 1.66, -0.02);
-  const hat = material(scene, "hat", "#245c3a");
-  const brim = MeshBuilder.CreateCylinder("brim", { height: 0.04, diameter: 0.46, tessellation: 8 }, scene);
-  brim.parent = root;
-  brim.position.y = 1.72;
-  brim.material = hat;
-  brim.isPickable = false;
-  const crown = MeshBuilder.CreateCylinder("crown", { height: 0.16, diameter: 0.24, tessellation: 8 }, scene);
-  crown.parent = root;
-  crown.position.y = 1.82;
-  crown.material = hat;
-  crown.isPickable = false;
+  const hat = material(scene, "hat", "#a8834f");
+  const band = material(scene, "hat-band", "#245c3a");
   const pack = material(scene, "pack", "#6b4a32");
-  sphere(scene, "pack", root, pack, 0.28, 0.32, 0.16, 0, 1.08, -0.16);
+  const sleeve = material(scene, "sleeve", "#c9b48a");
+  sphere(scene, "hips", root, pants, 0.36, 0.2, 0.24, 0, 0.82, 0);
+  sphere(scene, "torso", root, shirt, 0.42, 0.56, 0.27, 0, 1.12, 0);
+  sphere(scene, "vest", root, vest, 0.45, 0.42, 0.29, 0, 1.12, 0.01);
+  sphere(scene, "neck", root, skin, 0.13, 0.12, 0.13, 0, 1.4, 0);
+  sphere(scene, "head", root, skin, 0.27, 0.3, 0.26, 0, 1.55, 0.01);
+  sphere(scene, "nose", root, skin, 0.05, 0.06, 0.06, 0, 1.54, 0.14);
+  sphere(scene, "hair", root, hair, 0.29, 0.18, 0.27, 0, 1.64, -0.03);
+  const brim = MeshBuilder.CreateCylinder("brim", { height: 0.03, diameter: 0.5, tessellation: 14 }, scene);
+  brim.parent = root; brim.position.y = 1.69; brim.material = hat; brim.isPickable = false;
+  const crown = MeshBuilder.CreateCylinder("crown", { height: 0.15, diameterTop: 0.22, diameterBottom: 0.27, tessellation: 12 }, scene);
+  crown.parent = root; crown.position.y = 1.77; crown.material = hat; crown.isPickable = false;
+  const ribbon = MeshBuilder.CreateCylinder("hat-band", { height: 0.04, diameter: 0.275, tessellation: 12 }, scene);
+  ribbon.parent = root; ribbon.position.y = 1.72; ribbon.material = band; ribbon.isPickable = false;
+  const bag = MeshBuilder.CreateBox("pack", { width: 0.32, height: 0.38, depth: 0.16 }, scene);
+  bag.parent = root; bag.position.set(0, 1.12, -0.2); bag.material = pack; bag.isPickable = false;
+  sphere(scene, "bedroll", root, band, 0.36, 0.12, 0.12, 0, 1.34, -0.2);
   const legs = [
-    leg(scene, root, boot, -0.1, 0, 0.78),
-    leg(scene, root, boot, 0.1, 0, 0.78),
+    limb(scene, root, pants, boot, -0.1, 0.8, 0.8, 0.15, 0.2),
+    limb(scene, root, pants, boot, 0.1, 0.8, 0.8, 0.15, 0.2),
+    // Arms swing opposite to the leg on the same side.
+    limb(scene, root, sleeve, skin, 0.26, 1.34, 0.6, 0.11, 0.3),
+    limb(scene, root, sleeve, skin, -0.26, 1.34, 0.6, 0.11, 0.3),
   ];
-  legs[0]!.position.y = 0.78;
-  legs[1]!.position.y = 0.78;
+  legs[2]!.rotation.z = 0.12; legs[3]!.rotation.z = -0.12;
   return { root, legs, wings: [], crest: null };
 }

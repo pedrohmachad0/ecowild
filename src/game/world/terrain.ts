@@ -1,7 +1,7 @@
 import { CONFIG } from "../config.ts";
 import { distToSegment, smoothstep } from "../math.ts";
 
-const PATH: readonly (readonly [number, number])[] = [
+export const TRAIL: readonly (readonly [number, number])[] = [
   [0, 18],
   [1, 12],
   [4, 7],
@@ -24,9 +24,9 @@ export function heightAt(x: number, z: number): number {
 
 export function pathDistance(x: number, z: number): number {
   let best = 99;
-  for (let i = 0; i < PATH.length - 1; i++) {
-    const a = PATH[i]!;
-    const b = PATH[i + 1]!;
+  for (let i = 0; i < TRAIL.length - 1; i++) {
+    const a = TRAIL[i]!;
+    const b = TRAIL[i + 1]!;
     best = Math.min(best, distToSegment(x, z, a[0], a[1], b[0], b[1]));
   }
   return best;

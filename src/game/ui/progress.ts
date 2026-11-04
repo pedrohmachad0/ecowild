@@ -1,5 +1,14 @@
 import type { EcoWildGame } from "../EcoWildGame.ts";
 import type { LoadResult } from "../persistence/save.ts";
+import type { SaveV1 } from "../types.ts";
+
+/** Human summary of a validated save, used for slots and the import preview. */
+export function describeSave(data: SaveV1): string {
+  const known = Object.values(data.discoveries).filter(f => f?.seen).length;
+  const minutes = Math.floor(data.seconds / 60);
+  const pet = data.pet;
+  return `Save v1 · ${minutes} min de jogo · ${known} espécie(s) no diário · ${data.inventory.berries} frutos da mata · ${data.inventory.glowfruit} frutiluz${pet ? ` · companheira ${pet.name || "Auryn"}` : ""}.`;
+}
 
 /** Native modal keeps focus and touch scrolling independent of gameplay. */
 export function bindProgress(game: EcoWildGame) {
@@ -9,25 +18,29 @@ export function bindProgress(game: EcoWildGame) {
   const abort = new AbortController();
   const options = { signal: abort.signal };
   let busy = false, returnFocus: HTMLElement | null = null;
+  let pendingImport: SaveV1 | null = null;
+  const fileInput = dialog.querySelector<HTMLInputElement>("#import-file")!;
+  const preview = dialog.querySelector<HTMLElement>("#import-preview")!;
+  const resetImport = () => { pendingImport = null; fileInput.value = ""; preview.textContent = ""; button("import-confirm").hidden = true; };
   const urls = new Set<string>();
   const lock = (value: boolean) => {
     busy = value;
     dialog.setAttribute("aria-busy", String(value));
-    dialog.querySelectorAll<HTMLButtonElement>("button").forEach(node => { node.disabled = value; });
+    dialog.querySelectorAll<HTMLButtonElement | HTMLInputElement>("button, input").forEach(node => { node.disabled = value; });
   };
   const describe = (result: LoadResult) => {
     if (result.status === "empty") return "Nenhum progresso neste slot.";
     if (result.status === "invalid") return "Formato incompatível ou inválido. Preservado para exportação; não pode ser carregado.";
     if (result.status === "unavailable") return "Não foi possível acessar o armazenamento. Tente novamente ou exporte a sessão aberta.";
     if (result.status !== "loaded") return "Não foi possível ler o progresso.";
-    const pet = result.data.pet;
-    return `Save v1 · ${result.data.inventory.berries} frutos da mata · ${result.data.inventory.glowfruit} frutiluz${pet ? ` · Companheira ${pet.name || "Auryn"}` : ""}.`;
+    return describeSave(result.data);
   };
   const refresh = async () => {
     const slots = await game.inspectProgress();
     dialog.querySelector("#primary-summary")!.textContent = (slots.session ? "Exportar captura esta sessão pausada. Última cópia gravada: " : "") + describe(slots.primary);
     dialog.querySelector("#backup-summary")!.textContent = describe(slots.backup);
     lock(false);
+    button("import-confirm").disabled = !pendingImport;
     button("restore-backup").disabled = slots.backup.status !== "loaded";
     button("export-backup").disabled = slots.backup.status === "empty" || slots.backup.status === "unavailable";
   };
@@ -79,6 +92,28 @@ export function bindProgress(game: EcoWildGame) {
       status.textContent = ok ? "Backup restaurado. Feche para continuar; o progresso substituído ficou no backup." : "Restauração não concluída. Outra aba pode ter alterado o progresso ou o armazenamento falhou. Exporte esta sessão antes de recarregar.";
     });
   }, options);
+  fileInput.addEventListener("change", async () => {
+    pendingImport = null; button("import-confirm").hidden = true;
+    const file = fileInput.files?.[0];
+    if (!file) { preview.textContent = ""; return; }
+    let text = "";
+    try { text = await file.text(); } catch { preview.textContent = "Não foi possível ler o arquivo."; return; }
+    const result = game.previewImport(text);
+    if (!result.ok) { preview.textContent = result.reason + " Nada foi alterado."; return; }
+    pendingImport = result.data;
+    preview.textContent = `Prévia: ${describeSave(result.data)}`;
+    button("import-confirm").hidden = false; button("import-confirm").disabled = false;
+  }, options);
+  button("import-confirm").addEventListener("click", () => {
+    const data = pendingImport;
+    if (busy || !data || !window.confirm("Importar este progresso? Ele substituirá o progresso atual, que ficará no backup para desfazer. Cancelar mantém tudo como está.")) return;
+    status.textContent = "Importando…";
+    void act(async () => {
+      const ok = await game.importProgress(data);
+      resetImport();
+      status.textContent = ok ? "Progresso importado. O anterior ficou no backup; use Restaurar backup para desfazer." : "Importação não concluída. Nada foi trocado; outra aba pode ter alterado o progresso ou o armazenamento falhou.";
+    });
+  }, options);
   button("reload-progress").addEventListener("click", () => {
     if (!busy && window.confirm("Recarregar o progresso do aparelho? Alterações não gravadas desta sessão serão perdidas. Cancele e exporte a sessão primeiro se quiser preservá-la.")) location.reload();
   }, options);
@@ -86,7 +121,7 @@ export function bindProgress(game: EcoWildGame) {
     async open() {
       if (dialog.open) return;
       returnFocus = document.activeElement as HTMLElement;
-      game.setProgressOpen(true);
+      game.setProgressOpen(true); resetImport();
       status.textContent = "Lendo progresso e backup…";
       dialog.showModal(); lock(true);
       await refresh();

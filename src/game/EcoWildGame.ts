@@ -14,8 +14,10 @@ import { animateRig, buildCreature, buildPlayer } from "./render/actors.ts";
 import type { Rig } from "./render/actors.ts";
 import { buildForest } from "./render/forest.ts";
 import type { Forest } from "./render/forest.ts";
-import { commandPet, createSim, petSnapshot, stepSim, toSave, trustSnapshot } from "./sim/simulation.ts";
-import type { Simulation, SimCreature } from "./sim/simulation.ts";
+import { commandPet, createSim, eatBerry, petSnapshot, stepSim, toSave, trustSnapshot, usePetAbility } from "./sim/simulation.ts";
+import type { PetAbility, Simulation, SimCreature } from "./sim/simulation.ts";
+import { parseImport } from "./persistence/importSave.ts";
+import type { ImportPreview } from "./persistence/importSave.ts";
 import type { CameraMode, PetCommand, QualityName, SaveV1 } from "./types.ts";
 import { heightAt } from "./world/terrain.ts";
 
@@ -100,14 +102,13 @@ export class EcoWildGame {
   }
 
   useBerry(): void {
-    const sim = this.sim;
-    if (!sim || sim.inventory.berries <= 0) return;
-    sim.inventory.berries -= 1;
-    sim.player.energy = Math.min(100, sim.player.energy + 28);
-    sim.player.health = Math.min(100, sim.player.health + 16);
-    sim.player.thirst = Math.max(0, sim.player.thirst - 10);
-    sim.toasts.push({ text: "Você comeu um fruto da mata.", ttl: 2.4 });
-    this.pushHud();
+    if (this.sim && eatBerry(this.sim)) this.pushHud();
+  }
+
+  /** Companion abilities apply immediately, like commands, even from the pause panel. */
+  petAbility(ability: PetAbility): void {
+    if (this.sim && this.playing && usePetAbility(this.sim, ability)) { this.pushHud(); void this.saveNow(true); }
+    else this.pushHud();
   }
 
   async init(canvas: HTMLCanvasElement): Promise<void> {
@@ -279,6 +280,39 @@ export class EcoWildGame {
     }
     return this.saves.exportRaw(slot === "current" ? "primary" : "backup");
   }
+  previewImport(text: string): ImportPreview { return parseImport(text); }
+
+  /**
+   * Imported progress becomes primary; the previous primary goes to backup in the same
+   * IndexedDB transaction. An open session is saved first so it is the one preserved.
+   */
+  async importProgress(data: SaveV1): Promise<boolean> {
+    if (this.recovering || this.saveConflict) return false;
+    this.recovering = true;
+    try {
+      await this.saveQueue;
+      if (this.playing && this.sim) {
+        const current = await this.saves.write(toSave(this.sim, { quality: this.quality, lookSens: this.lookSens }));
+        if (current.status !== "saved") { this.saveConflict = current.status === "conflict"; this.saveStatus = "Não foi possível guardar a sessão atual antes de importar. Nada foi trocado."; return false; }
+      }
+      const result = await this.saves.write(data, true);
+      if (result.status !== "saved") {
+        this.saveConflict = result.status === "conflict";
+        this.saveStatus = this.saveConflict ? "Outra aba alterou o progresso. Recarregue antes de importar." : "Não foi possível importar. O progresso atual foi preservado.";
+        return false;
+      }
+      this.stopObservation();
+      this.pendingSave = result.data; this.loadStatus = "loaded"; this.backupOnWrite = false;
+      if (this.playing) {
+        this.sim = createSim(result.data);
+        this.camYaw = this.sim.player.yaw; this.acc = this.saveAcc = 0;
+        this.open("pause"); this.syncActors(); this.syncProps();
+      }
+      this.saveStatus = "Progresso importado. O anterior ficou no backup.";
+      return true;
+    } finally { this.recovering = false; this.pushHud(); }
+  }
+
   async restoreProgress(): Promise<boolean> {
     if (this.recovering || this.saveConflict) return false;
     this.recovering = true;
@@ -408,6 +442,7 @@ export class EcoWildGame {
     else if (input.mapEdge) this.open(this.panel === "map" ? "none" : "map");
     if (this.panel === "none" && this.focusId && (Math.hypot(input.moveX, input.moveZ) > 0.1 || input.jumpEdge)) this.stopObservation();
     if (input.observeEdge && this.panel === "none") this.toggleObservation();
+    if (input.ability && this.panel === "none") this.petAbility(input.ability);
     if (input.cameraEdge && this.panel === "none") {
       this.stopObservation();
       this.mode = this.mode === "third" ? "first" : "third";
@@ -544,6 +579,7 @@ export class EcoWildGame {
         yaw: 0,
         swimming: false,
         hasSave: !!this.pendingSave,
+        threat: 0, track: null, abilities: null, props: [],
       };
     }
     const avg = this.fpsWindow.length
@@ -579,13 +615,24 @@ export class EcoWildGame {
         z: c.z,
         known: !!sim.discoveries[c.speciesId]?.seen,
         tamed: c.tamed,
+        state: c.state,
       })),
       player: { x: sim.player.x, z: sim.player.z },
       yaw: this.camYaw,
       swimming: sim.player.swimming,
       hasSave: !!this.pendingSave,
+      threat: sim.threat,
+      props: sim.props.map(p => ({ id: p.id, kind: p.kind, x: p.x, z: p.z, available: !p.taken && p.depleted <= 0 })),
+      track: sim.track ? { x: sim.track.x, z: sim.track.z, label: sim.track.label } : null,
+      abilities: (() => {
+        const pet = sim.creatures.find(c => c.speciesId === "auryn" && c.tamed);
+        if (!pet) return null;
+        return { near: Math.hypot(pet.x - sim.player.x, pet.z - sim.player.z) < 6, track: pet.abilityCd.track, calm: pet.abilityCd.calm };
+      })(),
     };
   }
+
+  refreshHud(): void { this.pushHud(); }
 
   private pushHud(): void {
     this.hooks.onHud(this.snapshot());
@@ -659,9 +706,13 @@ export type HudSnapshot = {
   toasts: string[];
   discovered: number;
   species: number;
-  map: { id: string; speciesId: string; x: number; z: number; known: boolean; tamed: boolean }[];
+  map: { id: string; speciesId: string; x: number; z: number; known: boolean; tamed: boolean; state: string }[];
   player: { x: number; z: number };
   yaw: number;
   swimming: boolean;
   hasSave: boolean;
+  threat: number;
+  props: { id: string; kind: "glow" | "berry"; x: number; z: number; available: boolean }[];
+  track: { x: number; z: number; label: string } | null;
+  abilities: { near: boolean; track: number; calm: number } | null;
 };

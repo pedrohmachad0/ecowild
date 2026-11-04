@@ -22,16 +22,30 @@
     <section id="title">
       <p class="eyebrow">Diário de campo · 01</p>
       <h1>EcoWild</h1>
-      <p>Mata da Nascente</p>
+      <p class="subtitle">Mata da Nascente</p>
       <p>Uma floresta pequena e viva. Observe antes de se aproximar. A Auryn não se domestica só com comida.</p>
-      <p id="load-status" role="status">Preparando a mata e lendo progresso…</p><button id="enter" type="button" disabled>Entrar na mata</button>
-      <button id="resume" type="button" hidden>Continuar de onde parei</button>
-      <button id="manage-progress" type="button" disabled>Progresso / backup</button>
-      <div id="pwa-info"><button id="install" type="button">Instalar / ajuda</button><button id="update-app" type="button" hidden>Salvar e atualizar</button><p id="pwa-status" role="status"></p></div>
+      <p id="load-status" role="status">Preparando a mata e lendo progresso…</p>
+      <div class="title-actions">
+        <button id="resume" class="primary" type="button" hidden>Continuar de onde parei</button>
+        <button id="enter" class="primary" type="button" disabled>Entrar na mata</button>
+        <button id="manage-progress" class="secondary" type="button" disabled>Progresso / backup</button>
+      </div>
+      <div id="pwa-info"><button id="install" class="secondary" type="button">Instalar / ajuda</button><button id="update-app" class="secondary" type="button" hidden>Salvar e atualizar</button><p id="pwa-status" role="status"></p></div>
     </section>
 
     <div id="playing-bar" hidden>
-      <div id="vitals" aria-label="Estado"></div>
+      <div id="hud">
+        <div id="vitals" role="group" aria-label="Estado do explorador">
+          <div class="meter" data-kind="health"><span class="meter-label">Vida</span><span class="meter-track"><span class="meter-fill"></span></span></div>
+          <div class="meter" data-kind="energy"><span class="meter-label">Energia</span><span class="meter-track"><span class="meter-fill"></span></span></div>
+          <div class="meter" data-kind="water"><span class="meter-label">Água</span><span class="meter-track"><span class="meter-fill"></span></span></div>
+        </div>
+        <div id="hud-chips">
+          <span id="journal-chip" class="chip"></span>
+          <span id="pet-chip" class="chip" hidden></span>
+          <span id="threat-chip" class="chip danger" role="alert" hidden>Lobo rosnando</span>
+        </div>
+      </div>
       <div id="menu">
         <button id="open-catalog" type="button">Diário</button>
         <button id="open-inventory" type="button">Bolsa</button>
@@ -44,9 +58,9 @@
     <aside id="field-note" hidden aria-label="Animal observado"><strong id="encounter-name"></strong><span id="encounter-state"></span><p id="encounter-message"></p><small>Mova-se ou use Observar para voltar.</small></aside>
     <p id="prompt" hidden></p>
     <div id="toasts" role="status" aria-live="polite"></div>
+    <div id="threat-vignette" aria-hidden="true"></div>
     <section id="sheet" role="dialog" aria-modal="true" aria-labelledby="panel-title" hidden>
-      <button id="close-sheet" type="button">Fechar</button>
-      <p id="save-status" role="status"></p>
+      <button id="close-sheet" type="button" aria-label="Fechar painel">Fechar</button>
       <div data-body></div>
     </section>
 
@@ -66,7 +80,7 @@
     <dialog id="progress-dialog" aria-labelledby="progress-title">
       <button id="close-progress" type="button" autofocus>Fechar</button>
       <h2 id="progress-title">Progresso e backup</h2>
-      <p>Os dados ficam neste navegador. Exporte uma cópia para guardá-la fora dele. Importação de arquivos ainda não está disponível.</p>
+      <p>Os dados ficam neste navegador. Exporte uma cópia para guardá-la fora dele e importe-a quando quiser voltar a ela.</p>
       <p id="progress-status" role="status" aria-live="polite"></p>
       <h3>Progresso atual</h3><p id="primary-summary"></p>
       <button id="export-current" type="button">Exportar progresso atual</button>
@@ -74,6 +88,12 @@
       <button id="export-backup" type="button">Exportar backup</button>
       <button id="restore-backup" type="button">Restaurar backup…</button>
       <p>Restaurar troca o progresso pelo backup e guarda o anterior para desfazer. Se houver uma sessão aberta, ela fica no backup na mesma operação. Se a gravação falhar, nada é trocado.</p>
+      <h3>Importar arquivo</h3>
+      <p>Escolha um JSON exportado pelo EcoWild. Você verá um resumo antes de confirmar; o progresso atual vai para o backup.</p>
+      <input id="import-file" type="file" accept="application/json,.json">
+      <p id="import-preview" aria-live="polite"></p>
+      <button id="import-confirm" type="button" hidden>Importar este progresso…</button>
+      <h3>Recarregar</h3>
       <button id="reload-progress" type="button">Recarregar progresso do aparelho…</button>
     </dialog>
 

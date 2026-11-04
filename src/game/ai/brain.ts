@@ -19,6 +19,8 @@ export type Stimulus = {
   tamed: boolean;
   command: PetCommand | null;
   preferIdle: boolean;
+  /** Auryn's calm pulse: prey ignores the player, predators lose focus. */
+  calmed?: boolean;
 };
 
 /**
@@ -30,10 +32,10 @@ export function decide(s: Stimulus): AiState {
   if (s.tamed && (s.command === "FOLLOW" || s.command === "RETURN")) return "FOLLOW_OWNER";
   if (s.tamed && s.command === "PROTECT") return "PROTECT_OWNER";
 
-  const playerScare =
+  const playerScare = !s.calmed && (
     (s.temperament === "skittish" && s.playerDist < s.fleeRadius) ||
     (s.temperament === "calm" && s.playerSprinting && s.playerDist < s.fleeRadius) ||
-    (s.temperament === "curious" && s.playerSprinting && s.playerDist < s.fleeRadius);
+    (s.temperament === "curious" && s.playerSprinting && s.playerDist < s.fleeRadius));
 
   const predatorClose = s.threatDist != null && s.threatDist < Math.max(6, s.fleeRadius);
   const panicked = s.fear > 0.55 || predatorClose || playerScare;
@@ -43,6 +45,8 @@ export function decide(s: Stimulus): AiState {
       s.temperament === "territorial" && s.fear < 0.55 && !predatorClose && s.playerDist < 12;
     if (!wolfHolds) return "FLEE";
   }
+
+  if (s.calmed && (s.temperament === "territorial" || s.diet === "carnivore")) return s.preferIdle ? "IDLE" : "WANDER";
 
   if (s.temperament === "territorial" && s.inTerritory && s.playerDist < 8 && s.fear < 0.45) {
     return "DEFEND";

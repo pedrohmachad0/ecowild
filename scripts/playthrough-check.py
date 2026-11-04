@@ -6,7 +6,7 @@ from pathlib import Path
 import os,json,math,time
 out=Path(os.environ.get('EVIDENCE_DIR','/tmp/ecowild-playthrough'));out.mkdir(parents=True,exist_ok=True)
 with sync_playwright() as p:
- b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
+ b=p.chromium.launch(executable_path=os.environ.get('CHROMIUM','/usr/bin/chromium'),args=['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
  page=b.new_page(viewport={'width':1280,'height':720});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  page.goto('http://127.0.0.1:4173');page.locator('#enter').click(timeout=60000)
  def sim():return page.evaluate('window.__controlsTest.getSim()')

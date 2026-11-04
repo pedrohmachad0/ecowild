@@ -45,7 +45,8 @@ export function initPwa(save: () => Promise<boolean>, pause: () => void): () => 
       void navigator.serviceWorker.ready.then(() => { if (!disposed && !reg.waiting) say("Mata preparada para abrir offline neste navegador. O navegador ainda pode remover dados locais."); });
       void reg.update().catch(() => { /* cached version remains available offline */ });
     }).catch(() => say("Offline indisponível agora. O jogo continua no navegador; tente novamente com rede e armazenamento disponíveis."));
-  } else say(import.meta.env.DEV ? "Offline é preparado no build de produção; desenvolvimento não registra service worker." : "Este navegador não oferece o modo offline do EcoWild.");
+  } else if (import.meta.env.DEV) console.info("EcoWild: o modo offline só é preparado no build de produção.");
+  else say("Este navegador não oferece o modo offline do EcoWild.");
   window.addEventListener("offline", () => say("Sem rede. Se a cópia offline foi preparada, a mata e o save local continuam disponíveis."), options);
   return () => { disposed = true; abort.abort(); };
 }

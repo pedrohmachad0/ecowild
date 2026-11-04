@@ -9,8 +9,8 @@ Continuação em 27/10/2026 sobre `main@2cdacf7`, após o merge do PR #5, na bra
 | M3 Mata | Relevo, lago, trilha, árvores/rochas, frutos, colisões circulares, limite visível | Navegação do MVP; câmera/colisão geométrica completa ainda parcial |
 | M4 Fauna | 11 atores, cinco modelos articulados v2, estados diferenciados, seed, decisão a ~8 Hz | Estúdio e cena real no Chromium; sem cone/linha de visão da IA, memória ou LOD distante; caça abstrata |
 | M5 Vínculo | Auryn, confiança, observação, oferta validada, FOLLOW/STAY/PROTECT/RETURN, recuperação | Regressões e percurso em navegador; proteção contextual simples |
-| M6 Diário/bolsa | Campos graduais, pesquisa, coleta/consumo e guia textual | Sem filtros, fotografias, rastros ou minimapa gráfico |
-| M7 Progresso | Save v1 validado, fila, backup no novo jogo, falhas visíveis, preferências separadas | Restauração atômica, exportação e conflito entre abas implementados; importação de arquivos futura |
+| M6 Diário/bolsa | Campos graduais, pesquisa, filtros, coleta/consumo, guia com mapa gráfico | Sem fotografias ou minimapa fixo no HUD; rastro só via Auryn |
+| M7 Progresso | Save v1 validado, fila, backup no novo jogo, falhas visíveis, preferências separadas | Restauração atômica, exportação, importação JSON com prévia e conflito entre abas implementados |
 | M8 PWA/mobile | Manifest/ícones, shell offline, atualização consentida, base relativa | Chromium emulado; instalação/standalone e desempenho físico pendentes |
 | M9 Expansão | Visão documentada | Não implementado |
 
@@ -51,12 +51,15 @@ M4/M5 já têm implementações no PR #4. Esses gates orientam aceitação e exp
 - [x] Cinco modelos originais com olhos, focinhos/bico, patas/garras, caudas/penas e poses por estado; comparação com a base e orçamento de meshes/triângulos.
 - [x] Q/Observar em PC/toque para enquadrar encontro e explicar alcance, calma, confiança e oferta real da Auryn.
 - [ ] Refinar contato das patas com o terreno, transições de repouso e LOD de modelos após profiling; câmera ainda usa volumes aproximados.
-- [ ] Melhorar sinais de ameaça e percepção visual da IA/diário sem confundir o foco da câmera com pesquisa automática.
+- [ ] Percepção visual da IA/diário (cone/linha de visão) sem confundir o foco da câmera com pesquisa automática.
 - [x] UI para recuperar/exportar backup e arbitragem de gravações entre abas desta versão.
 - [x] Zoom por pinça independente do joystick, retomada de arrasto e limpeza dos ponteiros.
-- [ ] Importação JSON com prévia/validação e confirmação, sem descartar slots existentes.
+- [x] Importação JSON com prévia/validação e confirmação, sem descartar slots existentes ([UI_2026-11-04](UI_2026-11-04.md)).
+- [x] Revisão de interface: HUD em barras, painéis em cards, rótulos em português, direções corrigidas (bosque a noroeste), cores por tokens, placa e explorador refeitos.
+- [x] Sinais de ameaça: aviso, chip e vinheta quando um lobo defende o território perto do jogador.
 - [ ] Reduzir bundle Babylon com importações seletivas verificadas, sem retirar funcionalidades; medir download e primeiro frame em rede móvel.
-- [ ] Mais pontos de observação, filtros do diário, marcos e navegação visual. Line of sight antes de alegar observação visual rigorosa.
+- [x] Filtros do diário e guia com mapa gráfico (marcos, frutos, animais registrados, rastro).
+- [ ] Mais pontos de observação e minimapa fixo opcional no HUD. Line of sight antes de alegar observação visual rigorosa.
 - [ ] Migrar/remover módulos de render antigos somente depois de mapear consumidores externos e preservar testes úteis.
 
 ### P3 — visão completa preservada
@@ -67,8 +70,8 @@ M4/M5 já têm implementações no PR #4. Esses gates orientam aceitação e exp
 | Fauna real e fantástica | M4 | Mamíferos, ave, Auryn; classificação separada | Répteis, anfíbios, peixes, invertebrados, aquático/subterrâneo/arborícola |
 | Catálogo e colecionáveis | M6 | Avistamento por proximidade, habitat, observação e interação | Fotografia, rastros, desafios e coleções |
 | Pets exóticos | M5 | Auryn elegível, nome, vínculo, energia e XP | Novas espécies e habilidades |
-| Selvagens e defesa | M5 | Lobos ameaçam/atacam; Auryn próxima protege | Táticas e prioridades mais ricas |
-| Domesticação assistida | M5: contratos; efeito jogável em expansão | Não disponível | Pet rastreia/acalma/ajuda a aproximar outra espécie |
+| Selvagens e defesa | M5 | Lobos ameaçam/atacam com aviso visível; Auryn próxima protege ou acalma | Táticas e prioridades mais ricas |
+| Domesticação assistida | M5: contratos; efeito jogável em expansão | Parcial: Auryn fareja rastros e emite pulso calmo para aproximar presas e afastar o foco dos lobos; não doma outras espécies | Novas espécies elegíveis com vínculo facilitado pelo pet |
 | Ovos para certos pets | M9 | Não disponível | Apenas ovíparos; obtenção/incubação/nascimento coerentes |
 | Exploração especial | M3: navegação; expansão posterior | Caminhar e natação superficial | Aquática, aérea, cavernas e subterrâneo |
 
