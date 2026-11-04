@@ -40,11 +40,11 @@ export function animateRig(rig: Rig, phase: number, moving: boolean, time: numbe
     body.rotation.y = Math.sin(time * 9 * speed + phase + 1.2) * 0.08 * speed;
     return;
   }
-  if (rig.species === "tegu" || rig.species === "toad") {
+  if (rig.species === "tegu" || rig.species === "toad" || rig.species === "caiman") {
     const active2 = moving ? 1 : 0;
     if (rig.tail) rig.tail.rotation.y += Math.sin(phase) * 0.3 * active2 + Math.sin(time * 0.7) * 0.05;
     // Lizards wiggle sideways; toads hop with the body.
-    if (rig.species === "tegu") body.rotation.y = Math.sin(phase) * 0.12 * active2;
+    if (rig.species === "tegu" || rig.species === "caiman") body.rotation.y = Math.sin(phase) * 0.12 * active2;
     else body.position.y += Math.max(0, Math.sin(phase * 0.8)) * 0.07 * active2;
     rig.legs.forEach((leg, i) => { leg.rotation.y += Math.sin(phase + (i % 2 ? Math.PI : 0)) * 0.45 * active2; });
     if (rig.head) rig.head.rotation.x += (state === "REST" ? 0.12 : 0) - scared * 0.1;

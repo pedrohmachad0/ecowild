@@ -147,13 +147,14 @@ export function buildForest(scene: Scene, tier: AppliedTier): Forest {
       crown.scaling.set(scale * c.sx, scale * c.sy, scale * c.sz);
       leaves[(ti + ci) % 3]!.push(crown);
     });
-    // Buriti fronds: a ring of drooping leaf blades around the crown.
-    if (tree.kind === "buriti") for (let f = 0; f < 7; f++) {
+    // Palm fronds (buriti, carandá): a ring of drooping leaf blades around the crown.
+    const palm = tree.kind === "buriti" || tree.kind === "caranda";
+    const frondSize = tree.kind === "caranda" ? 0.7 : 1;
+    if (palm) for (let f = 0; f < 7; f++) {
       const a = f / 7 * Math.PI * 2 + ti;
-      const frond = MeshBuilder.CreateCylinder("frond", { height: 2.2, diameterTop: 0, diameterBottom: 0.5, tessellation: 3 }, scene);
-      frond.position.set(tree.x + Math.cos(a) * 1.1 * scale, h + 6.4 * scale, tree.z + Math.sin(a) * 1.1 * scale);
+      const frond = MeshBuilder.CreateCylinder("frond", { height: 2.2 * frondSize, diameterTop: 0, diameterBottom: 0.5 * frondSize, tessellation: 3 }, scene);
+      frond.position.set(tree.x + Math.cos(a) * 1.1 * frondSize * scale, h + shape.crowns[0]!.y * 0.97 * scale, tree.z + Math.sin(a) * 1.1 * frondSize * scale);
       frond.rotation.set(0, -a, Math.PI / 2 + 0.35);
-      frond.rotation.y = -a;
       frond.scaling.setAll(scale);
       leaves[(ti + f) % 3]!.push(frond);
     }

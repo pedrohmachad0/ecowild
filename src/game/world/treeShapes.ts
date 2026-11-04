@@ -23,6 +23,12 @@ export const TREE_SHAPES: Record<TreeKind, TreeShape> = {
     crowns: [{ x: 0, y: 6.6, z: 0, diameter: 3.4, sx: 1, sy: 0.42, sz: 1 }, { x: 0, y: 6.2, z: 0, diameter: 1.4, sx: 1, sy: 1, sz: 1 }],
     radius: 0.4,
   },
+  // Carandá (Copernicia alba): Pantanal fan palm, shorter and slimmer than the buriti.
+  caranda: {
+    trunk: { height: 4.6, diameter: 0.38, topScale: 0.85 },
+    crowns: [{ x: 0, y: 4.8, z: 0, diameter: 2.4, sx: 1, sy: 0.5, sz: 1 }, { x: 0, y: 4.5, z: 0, diameter: 1, sx: 1, sy: 1, sz: 1 }],
+    radius: 0.35,
+  },
   // Cerrado tree: short, crooked trunk with a wide, flat crown.
   twisted: {
     trunk: { height: 2.5, diameter: 0.55, topScale: 0.7 },

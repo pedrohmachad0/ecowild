@@ -47,6 +47,12 @@ export const CHALLENGES: readonly Challenge[] = [
     progress: sim => [sim.photos.anteater?.state === "EAT" ? 1 : 0, 1] },
   { id: "ember", title: "Brasa e musgo", description: "À noite, com um musgarim companheiro por perto, conquiste a confiança de um brasalume.",
     progress: sim => [[...sim.creatures, ...sim.away].some(c => c.speciesId === "brasalume" && c.tamed) ? 1 : 0, 1] },
+  { id: "wetland", title: "Planície das águas", description: "Da Vereda, siga a trilha do norte até a Baía do Pantanal.",
+    progress: sim => [sim.visited.includes("pantanal") ? 1 : 0, 1] },
+  { id: "caiman-sun", title: "Boca aberta ao sol", description: "Fotografe um jacaré-do-pantanal tomando sol na margem.",
+    progress: sim => [sim.photos.caiman?.state === "REST" ? 1 : 0, 1] },
+  { id: "jabiru", title: "Ave-símbolo", description: "Registre o comportamento do tuiuiú sem espantá-lo.",
+    progress: sim => [sim.discoveries.jabiru?.behavior ? 1 : 0, 1] },
   { id: "encyclopedia", title: "Enciclopédia da mata", description: "Complete 100% da pesquisa de todas as espécies.",
     progress: sim => [count(SPECIES.map(s => { const f = sim.discoveries[s.id]; return !!(f?.seen && f.habitat && f.behavior && f.interacted); })), SPECIES.length] },
 ];

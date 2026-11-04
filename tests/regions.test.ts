@@ -156,3 +156,30 @@ describe('fauna do Cerrado', () => {
     expect(sim.inventory.wolfapple).toBe(0);
   });
 });
+
+describe('Baía do Pantanal', () => {
+  test('Mata → Vereda → Pantanal: capivara e lambari vivem em duas regiões', () => {
+    const sim = createSim(null);
+    travel(sim, 'to-vereda'); travel(sim, 'to-pantanal');
+    expect(sim.region).toBe('pantanal');
+    const species = new Set(sim.creatures.map(c => c.speciesId));
+    for (const id of ['caiman', 'jabiru', 'capybara', 'fish'] as const) expect(species.has(id)).toBe(true);
+    expect(SPECIES_BY_ID.capybara.regions).toEqual(['mata', 'pantanal']);
+    expect(sim.visited).toEqual(['mata', 'vereda', 'pantanal']);
+    advance(sim, 1);
+    expect(sim.challenges['wetland']).toBe(true);
+  });
+  test('jacaré assustado foge para a água, não para longe da margem', () => {
+    const sim = createSim(null); travel(sim, 'to-vereda'); travel(sim, 'to-pantanal');
+    const caiman = sim.creatures.find(c => c.speciesId === 'caiman')!;
+    sim.creatures = [caiman]; sim.obstacles = [];
+    const water = region().water;
+    const before = Math.hypot(caiman.x - water.x, caiman.z - water.z);
+    // Player on the land side, running straight at it.
+    sim.player.x = caiman.x + (caiman.x - water.x) * 0.25; sim.player.z = caiman.z + (caiman.z - water.z) * 0.25;
+    caiman.fear = 1; caiman.aiAcc = 1;
+    for (let i = 0; i < 90; i++) { stepSim(sim, idle, 1 / 60); caiman.fear = Math.max(caiman.fear, 0.9); }
+    expect(caiman.state).toBe('FLEE');
+    expect(Math.hypot(caiman.x - water.x, caiman.z - water.z)).toBeLessThan(before);
+  });
+});

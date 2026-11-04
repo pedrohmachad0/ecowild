@@ -2,6 +2,7 @@ import { heightAt } from "./terrain.ts";
 import { CONFIG } from "../config.ts";
 import { region } from "./region.ts";
 import type { PropKind } from "./region.ts";
+import { TREE_SHAPES } from "./treeShapes.ts";
 import { MATA_CAMP, MATA_NESTS, MATA_PERCH, MATA_SPAWNS } from "./regions/mata.ts";
 
 export type Obstacle = { x: number; z: number; r: number; kind: "tree" | "rock" | "mound" };
@@ -11,7 +12,7 @@ export type Prop = { id: string; kind: PropKind; x: number; z: number };
 export function treeList(): Obstacle[] {
   return region().trees
     .filter(t => heightAt(t.x, t.z) >= CONFIG.waterY + 0.25)
-    .map(t => ({ x: t.x, z: t.z, r: t.kind === "buriti" ? 0.4 : 0.55, kind: "tree" as const }));
+    .map(t => ({ x: t.x, z: t.z, r: TREE_SHAPES[t.kind].radius, kind: "tree" as const }));
 }
 
 export function rockList(): Obstacle[] {

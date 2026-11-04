@@ -1,6 +1,6 @@
 # EcoWild
 
-Jogo web 3D de exploração, biologia e fantasia de Pedro Henrique Machado dos Santos. O jogo tem duas regiões ligadas por trilha: a **Mata da Nascente** e a **Vereda do Cerrado**. São quatorze espécies (mamíferos, ave, réptil, anfíbio, peixe e duas criaturas fantásticas), 22 animais com IA, ciclo de dia e noite, coleta, diário com fotos e desafios científicos, vínculo com a **Auryn**, domesticação assistida do **musgarim**, ovos chocados no acampamento, vários companheiros e progresso local. Single-player, sem conta ou telemetria.
+Jogo web 3D de exploração, biologia e fantasia de Pedro Henrique Machado dos Santos. O jogo tem três regiões ligadas por trilhas: a **Mata da Nascente**, a **Vereda do Cerrado** e a **Baía do Pantanal**. São dezesseis espécies (mamíferos, ave, réptil, anfíbio, peixe e duas criaturas fantásticas), 22 animais com IA, ciclo de dia e noite, coleta, diário com fotos e desafios científicos, vínculo com a **Auryn**, domesticação assistida do **musgarim**, ovos chocados no acampamento, vários companheiros e progresso local. Single-player, sem conta ou telemetria.
 
 Os cinco animais agora têm modelos próprios mais detalhados, olhos, patas, caudas/penas e poses de comportamento. Veja [a comparação visual e a validação da fauna](docs/FAUNA_2026-10-27.md). **Observar** aproxima a câmera de um animal conhecido e mostra seu estado e o próximo passo para criar vínculo com Auryn.
 
@@ -41,7 +41,9 @@ Siga a trilha desde a clareira, ao sul, até o lago ao norte e depois ao bosque 
 
 **Vereda do Cerrado.** No extremo leste da Mata, uma trilha (E no poste com lanterna) leva ao Cerrado: tamanduás comendo em cupinzeiros, seriemas correndo, o lobo-guará visitando as lobeiras ao entardecer e o brasalume, criatura de fantasia que dorme nos cupinzeiros e só confia em você à noite, com um musgarim companheiro perto dele. Colha fruta-do-lobo para oferecer. Companheiros em Seguir viajam com você; os em Esperar ficam.
 
-**Diário.** Abas Fichas e Desafios (16 desafios científicos, nenhum exige combate), filtros por pesquisa, grupo biológico e região, e fotos tiradas em Observar.
+**Baía do Pantanal.** Ao norte da Vereda, uma baía rasa com palmeiras carandá e capões de mata. Jacarés-do-pantanal tomam sol nas margens e mergulham quando se assustam; tuiuiús pescam na beira; capivaras e lambaris também vivem aqui, como na Mata.
+
+**Diário.** Abas Fichas e Desafios (19 desafios científicos, nenhum exige combate), filtros por pesquisa, grupo biológico e região, e fotos tiradas em Observar.
 
 Todos os painéis pausam a simulação. Comandos escolhidos na pausa são registrados imediatamente e executados ao retornar. Proteção afasta lobos próximos da companheira; não funciona à distância. Voltar faz a Auryn correr até você e depois seguir. Com a Auryn a menos de 6 m, **Farejar** marca no guia a espécie com pesquisa pendente mais próxima e **Pulso calmo** acalma animais a 9 m por 8 s (presas não fogem, lobos perdem o foco); elas ajudam a aproximar, não domesticam outras espécies. O guia (M) tem um mapa gráfico com lago, trilha, território dos lobos, frutos e animais já registrados; não há minimapa fixo no HUD. Lobos que defendem o território perto de você acendem o aviso “Lobo rosnando”. Há natação superficial simplificada no lago, sem mergulho. Qualidade, sensibilidade e zona morta estão em Pausa e persistem separadas do progresso. Gamepad padrão possui mapeamento básico; não há validação física de controle.
 

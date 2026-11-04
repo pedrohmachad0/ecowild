@@ -1,0 +1,15 @@
+{
+  "path": "spawn → trail → glow-0 → observe actual wandering Auryn → offer → STAY/name → save/reload → diary",
+  "state_modified_by_test": false,
+  "bond_timing": {
+    "simulated_seconds": 15.450000000000069,
+    "wall_seconds": 36.968482678999976
+  },
+  "pet": {
+    "name": "Luz",
+    "command": "STAY",
+    "level": 1,
+    "xp": 0.44999999999999996
+  },
+  "errors": []
+}

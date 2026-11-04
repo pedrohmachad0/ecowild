@@ -654,7 +654,12 @@ function updateCreature(sim: Simulation, c: SimCreature, dt: number, light: numb
     if (c.hidden && c.state !== "FLEE") speed = 0;
   }
 
-  if (c.state === "FLEE" && !burrower) {
+  if (c.state === "FLEE" && profile.traits.waterRefuge && waterDistance(c.x, c.z) < 9) {
+    // Semiaquatic animals escape into the water, not just away from the threat.
+    const water = region().water;
+    c.tx = water.x + (c.x - water.x) * 0.45;
+    c.tz = water.z + (c.z - water.z) * 0.45;
+  } else if (c.state === "FLEE" && !burrower) {
     const danger = threat ?? { x: sim.player.x, z: sim.player.z };
     const dx = c.x - danger.x;
     const dz = c.z - danger.z;

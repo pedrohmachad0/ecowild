@@ -12,7 +12,7 @@ Continuação em 27/10/2026 sobre `main@2cdacf7`, após o merge do PR #5, na bra
 | M6 Diário/bolsa | Campos graduais, pesquisa, filtros, coleta/consumo, guia com mapa gráfico | Sem fotografias ou minimapa fixo no HUD; rastro só via Auryn |
 | M7 Progresso | Save v1 validado, fila, backup no novo jogo, falhas visíveis, preferências separadas | Restauração atômica, exportação, importação JSON com prévia e conflito entre abas implementados |
 | M8 PWA/mobile | Manifest/ícones, shell offline, atualização consentida, base relativa | Chromium emulado; instalação/standalone e desempenho físico pendentes |
-| M9 Expansão | Registro de regiões, viagem, **Vereda do Cerrado** (tamanduá, seriema, lobo-guará, brasalume), ovos (fantasia), fotos, 16 desafios, dia/noite | Dois biomas; sem mergulho, cavernas, montarias ou genética. Guia em [EXPANDIR](EXPANDIR.md) |
+| M9 Expansão | Registro de regiões, viagem, **Vereda do Cerrado** (tamanduá, seriema, lobo-guará, brasalume), **Baía do Pantanal** (jacaré, tuiuiú, capivara e lambari multirregião), ovos (fantasia), fotos, 19 desafios, dia/noite | Três biomas; sem mergulho, cavernas, montarias ou genética. Guia em [EXPANDIR](EXPANDIR.md) |
 
 ## Marcos oficiais do Prompt Mestre
 
@@ -36,7 +36,7 @@ M4/M5 já têm implementações no PR #4. Esses gates orientam aceitação e exp
 
 ## Próximas expansões sugeridas
 
-Seguir [EXPANDIR](EXPANDIR.md). Candidatos coerentes com a visão: manguezal ou rio (exploração aquática e peixes), caverna (subterrâneo, morcegos), serra/campo rupestre (relevo e altitude), Pantanal (cheia e seca). Cada região nova passa pelo contrato de `tests/regions.test.ts`.
+Seguir [EXPANDIR](EXPANDIR.md). Feito: Vereda do Cerrado e Baía do Pantanal. Candidatos seguintes coerentes com a visão: manguezal ou rio (exploração aquática), caverna (subterrâneo, morcegos), serra/campo rupestre (relevo e altitude), cheia e seca sazonais no Pantanal. Cada região nova passa pelo contrato de `tests/regions.test.ts`.
 
 ## Próximas tarefas pequenas
 

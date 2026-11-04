@@ -20,6 +20,8 @@ export const SPECIES_COLOR: Record<string, string> = {
   seriema: "#cfc2a0",
   manedwolf: "#c9632f",
   brasalume: "#ffb347",
+  caiman: "#4a4a32",
+  jabiru: "#eeeae0",
 };
 
 const R = CONFIG.worldRadius;

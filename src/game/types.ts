@@ -14,7 +14,9 @@ export type SpeciesId =
   | "anteater"
   | "seriema"
   | "manedwolf"
-  | "brasalume";
+  | "brasalume"
+  | "caiman"
+  | "jabiru";
 
 export type AiState =
   | "IDLE"

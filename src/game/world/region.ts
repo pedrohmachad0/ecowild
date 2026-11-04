@@ -5,9 +5,9 @@ import type { SpeciesId } from "../types.ts";
  * here; simulation, rendering, minimap, save and camera read everything from the
  * active region. Only one region is loaded at a time (the player travels between them).
  */
-export type RegionId = "mata" | "vereda";
+export type RegionId = "mata" | "vereda" | "pantanal";
 
-export type TreeKind = "broadleaf" | "buriti" | "twisted";
+export type TreeKind = "broadleaf" | "buriti" | "twisted" | "caranda";
 export type PropKind = "glow" | "berry" | "egg" | "wolfapple";
 export type RegionProp = { id: string; kind: PropKind; x: number; z: number };
 export type RegionCreature = { id: string; speciesId: SpeciesId; x: number; z: number; hunger: number; thirst: number };
